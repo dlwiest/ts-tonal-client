@@ -13,11 +13,11 @@ This repository contains a TypeScript client for accessing Tonal data. It is des
 
 To use this client, clone the repository and install the necessary dependencies:
 
-\```bash
+```bash
 git clone https://github.com/yourusername/tonal-client.git
 cd tonal-client
 npm install
-\```
+```
 
 ## Usage
 
@@ -25,7 +25,7 @@ The client can be used in scripts or applications that require data from Tonal. 
 
 ### Get Movements
 
-\```typescript
+```typescript
 // Example: Fetching movements
 import { TonalClient } from './src/client';
 
@@ -36,11 +36,11 @@ async function fetchMovements() {
 }
 
 fetchMovements();
-\```
+```
 
 ### Get Workout by ID
 
-\```typescript
+```typescript
 // Example: Fetching a workout by ID
 import { TonalClient } from './src/client';
 
@@ -51,11 +51,11 @@ async function fetchWorkoutById(workoutId: string) {
 }
 
 fetchWorkoutById('workout_id_here');
-\```
+```
 
 ### Get Workout by Share URL
 
-\```typescript
+```typescript
 // Example: Fetching a workout by its share URL
 import { TonalClient } from './src/client';
 
@@ -66,7 +66,7 @@ async function fetchWorkoutByShareUrl(shareUrl: string) {
 }
 
 fetchWorkoutByShareUrl('https://link.tonal.com/custom-workout/your_workout_id');
-\```
+```
 
 ## Contributing
 
