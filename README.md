@@ -19,6 +19,9 @@ cd ts-tonal-client
 npm install
 ```
 
+In order to test with the example scripts in `/src/examples` you will need to create a `.env` file based on the formatting described in `.env.sample`.
+Note that your Tonal username is most likely an email address.
+
 ## Usage
 
 The client can be used in scripts or applications that require data from Tonal. Here are some examples of how to use the client:
