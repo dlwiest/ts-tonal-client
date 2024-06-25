@@ -14,8 +14,8 @@ This repository contains a TypeScript client for accessing Tonal data. It is des
 To use this client, clone the repository and install the necessary dependencies:
 
 ```bash
-git clone https://github.com/yourusername/tonal-client.git
-cd tonal-client
+git clone https://github.com/dlwiest/ts-tonal-client.git
+cd ts-tonal-client
 npm install
 ```
 
