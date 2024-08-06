@@ -81,4 +81,4 @@ This project is open-sourced under the MIT License. See the [LICENSE](LICENSE) f
 
 ## Contact
 
-For any queries or further assistance, please contact [your-email@example.com](mailto:your-email@example.com).
+For any queries or further assistance, please contact [Derrick Wiest](mailto:me@dlwiest.com).
