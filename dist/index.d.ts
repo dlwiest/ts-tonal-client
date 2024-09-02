@@ -1,4 +1,4 @@
-export interface OAuthTokenResponse {
+interface OAuthTokenResponse {
     access_token: string;
     id_token: string;
     refresh_token: string;
@@ -6,22 +6,8 @@ export interface OAuthTokenResponse {
     token_type: string;
     expires_in: number;
 }
-
-type MuscleGroup =
-    | 'Obliques'
-    | 'Abs'
-    | 'Shoulders'
-    | 'Glutes'
-    | 'Back'
-    | 'Biceps'
-    | 'Quads'
-    | 'Triceps'
-    | 'Chest'
-    | 'Hamstrings'
-    | 'Calves'
-    | 'Forearms';
-
-export interface TonalMovement {
+type MuscleGroup = 'Obliques' | 'Abs' | 'Shoulders' | 'Glutes' | 'Back' | 'Biceps' | 'Quads' | 'Triceps' | 'Chest' | 'Hamstrings' | 'Calves' | 'Forearms';
+interface TonalMovement {
     id: string;
     createdAt: string;
     updatedAt: string;
@@ -50,8 +36,7 @@ export interface TonalMovement {
     featureGroupIds: null | string[];
     isGeneric: boolean;
 }
-
-export interface TonalWorkout {
+interface TonalWorkout {
     id: string;
     createdAt: string;
     title: string;
@@ -89,7 +74,6 @@ export interface TonalWorkout {
     playbackType: string;
     isImported: boolean;
 }
-
 interface WorkoutSet {
     id: string;
     workoutId: string;
@@ -119,8 +103,7 @@ interface WorkoutSet {
     dropSet: boolean;
     omitempty: null | any;
 }
-
-export interface TonalSharedWorkout {
+interface TonalSharedWorkout {
     id: string;
     sharerUserId: string;
     parentWorkoutId: string;
@@ -129,3 +112,21 @@ export interface TonalSharedWorkout {
     deepLinkUrl: string;
     workoutSnapshot: TonalWorkout;
 }
+
+declare class TonalClient {
+    private username;
+    private password;
+    private idToken;
+    private tokenExpiresAt;
+    private constructor();
+    static create({ username, password }: {
+        username: string;
+        password: string;
+    }): Promise<TonalClient>;
+    private refreshToken;
+    getMovements(): Promise<TonalMovement[]>;
+    getWorkoutById(id: string): Promise<TonalWorkout>;
+    getWorkoutByShareUrl(shareUrl: string): Promise<TonalSharedWorkout>;
+}
+
+export { MuscleGroup, OAuthTokenResponse, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalClient as default };

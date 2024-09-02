@@ -1,10 +1,16 @@
 {
-  "name": "ts-tonal-client",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "@dlwiest/ts-tonal-client",
+  "version": "0.0.1",
+  "description": "TypeScript client for Tonal API",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "rollup -c --bundleConfigAsCjs"
   },
   "repository": {
     "type": "git",
@@ -18,8 +24,12 @@
   },
   "homepage": "https://github.com/dlwiest/ts-tonal-client#readme",
   "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.0",
     "@types/node": "^20.14.8",
+    "rollup": "^3.20.2",
+    "rollup-plugin-dts": "^5.3.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.2"
+    "tslib": "^2.7.0",
+    "typescript": "^5.5.4"
   }
 }
