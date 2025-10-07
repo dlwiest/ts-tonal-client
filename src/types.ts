@@ -167,11 +167,19 @@ export interface TonalUserDevice {
   platform: string
 }
 
+export interface TonalGoal {
+  id: string
+  name: string
+  description: string
+  active: boolean
+  filterItemId: string // TODO: investigate what filterItemId is used for
+}
+
 export interface TonalUserGoal {
   id: string
   userID: string
   goalID: string
-  tier: number // TODO: investigate what tier values mean (1-3 observed)
+  tier: number // Priority tier: 1=highest priority, 2=medium, 3=lowest
 }
 
 export interface TonalUserInfo {
@@ -202,7 +210,7 @@ export interface TonalUserInfo {
   location: string
   sharingCustomWorkoutsDisabled: boolean
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | string // TODO: verify all level values
-  goalId: string // TODO: investigate relationship to goals array
+  goalId: string // Primary goal ID (matches one of the goals array entries)
   goals: TonalUserGoal[]
   workoutDurationMin: number // TODO: investigate units (seconds observed)
   workoutDurationMax: number // TODO: investigate units (seconds observed)

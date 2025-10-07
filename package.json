@@ -25,7 +25,8 @@
     "example:movements:save": "tsx examples/get-movements.ts --save",
     "example:workout:id": "tsx examples/get-workout-by-id.ts",
     "example:workout:share": "tsx examples/get-workout-by-share-url.ts",
-    "example:user": "tsx examples/get-user-info.ts"
+    "example:user": "tsx examples/get-user-info.ts",
+    "example:goals": "tsx examples/get-goals.ts"
   },
   "repository": {
     "type": "git",

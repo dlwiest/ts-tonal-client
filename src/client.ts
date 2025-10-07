@@ -1,4 +1,4 @@
-import { OAuthTokenResponse, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalUserInfo, TonalClientError } from './types'
+import { OAuthTokenResponse, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalUserInfo, TonalGoal, TonalClientError } from './types'
 
 export class TonalClient {
   private username: string
@@ -180,6 +180,17 @@ export class TonalClient {
     await this.ensureValidToken()
 
     return this.makeRequestWithRetry<TonalUserInfo>(`${this.baseUrl}/users/userinfo`, {
+      headers: {
+        Authorization: `Bearer ${this.idToken}`,
+      },
+    })
+  }
+
+  // Get all available goals
+  public async getGoals(): Promise<TonalGoal[]> {
+    await this.ensureValidToken()
+
+    return this.makeRequestWithRetry<TonalGoal[]>(`${this.baseUrl}/goals`, {
       headers: {
         Authorization: `Bearer ${this.idToken}`,
       },
