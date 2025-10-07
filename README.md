@@ -21,18 +21,33 @@ cd ts-tonal-client
 npm install
 ```
 
-## Setup
+## Quick Start
 
-Create a `.env` file with your Tonal credentials:
+Basic usage:
+
+```typescript
+import TonalClient from './src/index'
+
+const client = await TonalClient.create({
+  username: 'your_email@example.com',
+  password: 'your_password',
+})
+
+// Get your workouts
+const workouts = await client.getUserWorkouts()
+console.log(`You have ${workouts.length} workouts`)
+```
+
+## Examples
+
+To run the example scripts, first create a `.env` file:
 
 ```bash
 cp .env.sample .env
 # Edit .env with your Tonal username (email) and password
 ```
 
-## Quick Start
-
-Try the example scripts:
+Then try the examples:
 
 ```bash
 # See all your workouts
@@ -48,18 +63,7 @@ npm run example:movements
 npm run example:goals
 ```
 
-## API Usage
-
-Import and use the client in your TypeScript code:
-
-```typescript
-import TonalClient from './src/index'
-
-const client = await TonalClient.create({
-  username: 'your_email@example.com',
-  password: 'your_password',
-})
-```
+## API Reference
 
 ### Workouts
 
