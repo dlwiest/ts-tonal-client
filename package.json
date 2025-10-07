@@ -10,7 +10,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "rollup -c --bundleConfigAsCjs"
+    "build": "rollup -c --bundleConfigAsCjs",
+    "example:movements": "tsx examples/get-movements.ts",
+    "example:movements:save": "tsx examples/get-movements.ts --save",
+    "example:workout:id": "tsx examples/get-workout-by-id.ts",
+    "example:workout:share": "tsx examples/get-workout-by-share-url.ts"
   },
   "repository": {
     "type": "git",
@@ -26,10 +30,12 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.0",
     "@types/node": "^20.14.8",
+    "dotenv": "^16.4.5",
     "rollup": "^3.20.2",
     "rollup-plugin-dts": "^5.3.1",
     "ts-node": "^10.9.2",
     "tslib": "^2.7.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.5.4"
   }
 }

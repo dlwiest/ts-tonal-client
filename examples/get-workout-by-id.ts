@@ -1,5 +1,5 @@
-require('dotenv').config()
-import TonalClient from '../src'
+import 'dotenv/config'
+import TonalClient from '../src/index'
 
 const getWorkoutById = async (workoutId: string) => {
   try {
