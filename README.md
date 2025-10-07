@@ -1,17 +1,19 @@
-# Tonal Client
+# TypeScript Tonal Client
 
-This repository contains a TypeScript client for accessing Tonal data. It is designed to interact with Tonal's systems to retrieve various types of workout-related data.
-
+A comprehensive TypeScript client for accessing Tonal's API. This library provides a robust interface to retrieve workout data, user information, movements, and more from your Tonal account.
 
 ## Features
 
-- Retrieve detailed workout data by ID.
-- Access shared workouts through share URLs.
-- Fetch movements and other related workout data.
+- 🏋️ **Complete Workout Access** - Get your workouts, workout details, and shared workouts
+- 👤 **User Management** - Access user info, goals, and preferences  
+- 💪 **Movement Database** - Browse all available Tonal movements
+- 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
+- 📝 **Full TypeScript Support** - Comprehensive types for all API responses
+- 🔄 **Smart Token Management** - Automatic authentication and token refresh
 
 ## Installation
 
-To use this client, clone the repository and install the necessary dependencies:
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/dlwiest/ts-tonal-client.git
@@ -19,57 +21,99 @@ cd ts-tonal-client
 npm install
 ```
 
-In order to test with the example scripts in `/src/examples` you will need to create a `.env` file based on the formatting described in `.env.sample`.
-Note that your Tonal username is most likely an email address.
+## Setup
 
-## Usage
+Create a `.env` file with your Tonal credentials:
 
-The client can be used in scripts or applications that require data from Tonal. Here are some examples of how to use the client:
-
-### Get Movements
-
-```typescript
-// Example: Fetching movements
-import { TonalClient } from './src/client';
-
-async function fetchMovements() {
-    const client = await TonalClient.create({ username: 'your_username', password: 'your_password' });
-    const movements = await client.getMovements();
-    console.log(movements);
-}
-
-fetchMovements();
+```bash
+cp .env.sample .env
+# Edit .env with your Tonal username (email) and password
 ```
 
-### Get Workout by ID
+## Quick Start
 
-```typescript
-// Example: Fetching a workout by ID
-import { TonalClient } from './src/client';
+Try the example scripts:
 
-async function fetchWorkoutById(workoutId: string) {
-    const client = await TonalClient.create({ username: 'your_username', password: 'your_password' });
-    const workout = await client.getWorkoutById(workoutId);
-    console.log(workout);
-}
+```bash
+# See all your workouts
+npm run example:user-workouts
 
-fetchWorkoutById('workout_id_here');
+# Get your user info
+npm run example:user
+
+# Browse available movements
+npm run example:movements
+
+# See fitness goals
+npm run example:goals
 ```
 
-### Get Workout by Share URL
+## API Usage
+
+Import and use the client in your TypeScript code:
 
 ```typescript
-// Example: Fetching a workout by its share URL
-import { TonalClient } from './src/client';
+import TonalClient from './src/index'
 
-async function fetchWorkoutByShareUrl(shareUrl: string) {
-    const client = await TonalClient.create({ username: 'your_username', password: 'your_password' });
-    const workout = await client.getWorkoutByShareUrl(shareUrl);
-    console.log(workout);
-}
-
-fetchWorkoutByShareUrl('https://link.tonal.com/custom-workout/your_workout_id');
+const client = await TonalClient.create({
+  username: 'your_email@example.com',
+  password: 'your_password',
+})
 ```
+
+### Workouts
+
+```typescript
+// Get your workouts (with pagination)
+const workouts = await client.getUserWorkouts(0, 10)
+console.log(`You have ${workouts.length} workouts`)
+
+// Get specific workout details  
+const workout = await client.getWorkoutById('workout-uuid')
+
+// Get shared workout
+const sharedWorkout = await client.getWorkoutByShareUrl('https://share.tonal.com/workout/...')
+```
+
+### User Information
+
+```typescript
+// Get your profile information
+const userInfo = await client.getUserInfo()
+console.log(`Welcome ${userInfo.firstName}!`)
+console.log(`Level: ${userInfo.level}`)
+console.log(`Location: ${userInfo.location}`)
+
+// Get available fitness goals
+const goals = await client.getGoals()
+goals.forEach(goal => {
+  console.log(`${goal.name}: ${goal.description}`)
+})
+```
+
+### Movements
+
+```typescript
+// Get all available movements
+const movements = await client.getMovements()
+console.log(`${movements.length} movements available`)
+
+// Filter by muscle group
+const chestMovements = movements.filter(m => 
+  m.muscleGroups.includes('Chest')
+)
+```
+
+## Available Scripts
+
+- `npm run build` - Build the TypeScript client
+- `npm run typecheck` - Run TypeScript type checking
+- `npm run example:movements` - List all movements
+- `npm run example:user` - Show user information  
+- `npm run example:goals` - Show available goals
+- `npm run example:user-workouts` - List your workouts
+- `npm run example:workout:id <id>` - Get specific workout
+- `npm run example:workout:share <url>` - Get shared workout
 
 ## Contributing
 
