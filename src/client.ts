@@ -196,4 +196,17 @@ export class TonalClient {
       },
     })
   }
+
+  // Get user's workouts with optional pagination
+  public async getUserWorkouts(offset: number = 0, limit: number = 50): Promise<TonalWorkout[]> {
+    await this.ensureValidToken()
+
+    return this.makeRequestWithRetry<TonalWorkout[]>(`${this.baseUrl}/user-workouts`, {
+      headers: {
+        Authorization: `Bearer ${this.idToken}`,
+        'pg-offset': offset.toString(),
+        'pg-limit': limit.toString(),
+      },
+    })
+  }
 }

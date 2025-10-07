@@ -103,9 +103,11 @@ export interface TonalWorkout {
   supportedDevices: string[] | null
   featureGroupIds: string[] | null
   movementIds: string[]
+  accessories?: string[] // Required accessories for the workout (e.g. "Bench", "Handles")
   muscleGroupsForExclusion: MuscleGroup[] | null
   playbackType: string
   isImported: boolean
+  createdSource?: unknown | null // TODO: investigate how workouts are created/imported
 }
 
 interface WorkoutSet {
