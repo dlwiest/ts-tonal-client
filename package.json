@@ -6,11 +6,21 @@
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "rollup -c --bundleConfigAsCjs",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc --watch --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build",
     "example:movements": "tsx examples/get-movements.ts",
     "example:movements:save": "tsx examples/get-movements.ts --save",
     "example:workout:id": "tsx examples/get-workout-by-id.ts",
@@ -20,8 +30,8 @@
     "type": "git",
     "url": "git+https://github.com/dlwiest/ts-tonal-client.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["tonal", "tonal-api", "typescript", "client"],
+  "author": "dlwiest",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/dlwiest/ts-tonal-client/issues"

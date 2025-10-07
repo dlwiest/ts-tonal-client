@@ -8,10 +8,12 @@ const config = [
       {
         file: 'dist/index.js',
         format: 'cjs',
+        exports: 'named',
       },
       {
         file: 'dist/index.esm.js',
         format: 'es',
+        exports: 'named',
       },
     ],
     plugins: [typescript()],
