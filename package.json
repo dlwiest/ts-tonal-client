@@ -27,7 +27,11 @@
     "example:workout:share": "tsx examples/get-workout-by-share-url.ts",
     "example:user": "tsx examples/get-user-info.ts",
     "example:goals": "tsx examples/get-goals.ts",
-    "example:user-workouts": "tsx examples/get-user-workouts.ts"
+    "example:user-workouts": "tsx examples/get-user-workouts.ts",
+    "example:estimate": "tsx examples/estimate-workout.ts",
+    "example:create-workout": "tsx examples/create-workout.ts",
+    "example:edit-workout": "tsx examples/edit-workout.ts",
+    "example:delete-workout": "tsx examples/delete-workout.ts"
   },
   "repository": {
     "type": "git",

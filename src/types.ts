@@ -69,6 +69,8 @@ export interface TonalMovement {
   isGeneric: boolean
 }
 
+export type WorkoutPublishState = 'published' | 'archived' | string
+
 export interface TonalWorkout {
   id: string
   createdAt: string
@@ -80,7 +82,7 @@ export interface TonalWorkout {
   coachId: string
   sets: WorkoutSet[]
   duration: number
-  publishState: string
+  publishState: WorkoutPublishState
   programId: string | null
   level: string
   groupIds: string[]
@@ -218,4 +220,48 @@ export interface TonalUserInfo {
   workoutDurationMax: number // TODO: investigate units (seconds observed)
   updatedPreferencesAt: string
   primaryDeviceType: 'Classic' | string // TODO: investigate other device types (Smart Gym, etc.)
+}
+
+export interface TonalWorkoutEstimateSet {
+  blockStart: boolean
+  movementId: string
+  prescribedReps?: number // For rep-based exercises
+  prescribedDuration?: number // For time-based exercises (in seconds)
+  dropSet: boolean
+  repetition: number
+  repetitionTotal: number
+  blockNumber: number
+  burnout: boolean
+  spotter: boolean
+  eccentric: boolean
+  chains: boolean
+  flex: boolean
+  warmUp: boolean
+  weightPercentage: number
+  setGroup: number
+  round: number
+  description: string
+}
+
+export interface TonalWorkoutEstimateResponse {
+  duration: number // Estimated duration in seconds
+}
+
+export interface TonalWorkoutCreateRequest {
+  title: string
+  sets: TonalWorkoutEstimateSet[] // Same structure as estimate sets
+  createdSource?: 'WorkoutBuilder' | 'FreeLift' | 'SharedWorkout' | 'DailyLift' | 'TonalWorkout' | 'WorkoutGenerator' | 'ActivityFeed'
+  shortDescription?: string
+  description?: string
+}
+
+export interface TonalWorkoutUpdateRequest {
+  id: string
+  title: string
+  description?: string
+  coachId: string
+  sets: TonalWorkoutEstimateSet[]
+  level?: string
+  assetId: string
+  createdSource?: 'WorkoutBuilder' | 'FreeLift' | 'SharedWorkout' | 'DailyLift' | 'TonalWorkout' | 'WorkoutGenerator' | 'ActivityFeed'
 }

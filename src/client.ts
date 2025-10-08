@@ -1,4 +1,4 @@
-import { OAuthTokenResponse, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalUserInfo, TonalGoal, TonalClientError } from './types'
+import { OAuthTokenResponse, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalUserInfo, TonalGoal, TonalWorkoutEstimateSet, TonalWorkoutEstimateResponse, TonalWorkoutCreateRequest, TonalWorkoutUpdateRequest, TonalClientError } from './types'
 
 export class TonalClient {
   private username: string
@@ -30,7 +30,7 @@ export class TonalClient {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
 
-  private async makeRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+  private async makeRequest<T>(url: string, options: RequestInit = {}, expectsBody: boolean = true): Promise<T> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout)
 
@@ -57,7 +57,11 @@ export class TonalClient {
         )
       }
 
-      return await response.json()
+      if (expectsBody) {
+        return await response.json()
+      } else {
+        return undefined as T
+      }
     } catch (error) {
       clearTimeout(timeoutId)
       if (error instanceof TonalClientError) {
@@ -70,12 +74,12 @@ export class TonalClient {
     }
   }
 
-  private async makeRequestWithRetry<T>(url: string, options: RequestInit = {}): Promise<T> {
+  private async makeRequestWithRetry<T>(url: string, options: RequestInit = {}, expectsBody: boolean = true): Promise<T> {
     let lastError: TonalClientError
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        return await this.makeRequest<T>(url, options)
+        return await this.makeRequest<T>(url, options, expectsBody)
       } catch (error) {
         lastError = error instanceof TonalClientError ? error : new TonalClientError('Unknown error', undefined, error)
         
@@ -208,5 +212,99 @@ export class TonalClient {
         'pg-limit': limit.toString(),
       },
     })
+  }
+
+  // Estimate workout duration based on sets
+  public async estimateWorkoutDuration(sets: TonalWorkoutEstimateSet[]): Promise<TonalWorkoutEstimateResponse> {
+    if (!sets || sets.length === 0) {
+      throw new TonalClientError('At least one set is required for estimation')
+    }
+
+    await this.ensureValidToken()
+
+    return this.makeRequestWithRetry<TonalWorkoutEstimateResponse>(`${this.baseUrl}/user-workouts/estimate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sets),
+    })
+  }
+
+  // Create a new workout
+  public async createWorkout(workoutData: TonalWorkoutCreateRequest): Promise<TonalWorkout> {
+    if (!workoutData.title || workoutData.title.trim().length === 0) {
+      throw new TonalClientError('Workout title is required')
+    }
+    
+    if (!workoutData.sets || workoutData.sets.length === 0) {
+      throw new TonalClientError('At least one set is required to create a workout')
+    }
+
+    await this.ensureValidToken()
+
+    const requestBody = {
+      title: workoutData.title.trim(),
+      sets: workoutData.sets,
+      createdSource: workoutData.createdSource || 'WorkoutBuilder',
+      shortDescription: workoutData.shortDescription || '',
+      description: workoutData.description || '',
+    }
+
+    return this.makeRequestWithRetry<TonalWorkout>(`${this.baseUrl}/user-workouts`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+  }
+
+  async updateWorkout(workoutData: TonalWorkoutUpdateRequest): Promise<TonalWorkout> {
+    if (!workoutData.id) {
+      throw new TonalClientError('Workout ID is required for updates')
+    }
+    if (!workoutData.title?.trim()) {
+      throw new TonalClientError('Workout title is required')
+    }
+    if (!workoutData.sets?.length) {
+      throw new TonalClientError('At least one set is required')
+    }
+
+    const requestBody = {
+      id: workoutData.id,
+      title: workoutData.title,
+      description: workoutData.description || '',
+      coachId: workoutData.coachId || '00000000-0000-0000-0000-000000000000',
+      sets: workoutData.sets,
+      level: workoutData.level || '',
+      assetId: workoutData.assetId,
+      createdSource: workoutData.createdSource || 'WorkoutBuilder'
+    }
+
+    return this.makeRequestWithRetry<TonalWorkout>(`${this.baseUrl}/user-workouts/${workoutData.id}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${this.idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+  }
+
+  async deleteWorkout(workoutId: string): Promise<void> {
+    if (!workoutId?.trim()) {
+      throw new TonalClientError('Workout ID is required')
+    }
+
+    await this.makeRequestWithRetry(`${this.baseUrl}/user-workouts/${workoutId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${this.idToken}`,
+        'Content-Type': 'application/json',
+      },
+    }, false)
   }
 }

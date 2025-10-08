@@ -4,7 +4,7 @@ A comprehensive TypeScript client for accessing Tonal's API. This library provid
 
 ## Features
 
-- 🏋️ **Complete Workout Access** - Get your workouts, workout details, and shared workouts
+- 🏋️ **Complete Workout Management** - Get, create, estimate, and share workouts
 - 👤 **User Management** - Access user info, goals, and preferences  
 - 💪 **Movement Database** - Browse all available Tonal movements
 - 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
@@ -61,6 +61,18 @@ npm run example:movements
 
 # See fitness goals
 npm run example:goals
+
+# Estimate workout duration
+npm run example:estimate
+
+# Create a new workout
+npm run example:create-workout
+
+# Edit an existing workout
+npm run example:edit-workout
+
+# Delete a workout
+npm run example:delete-workout
 ```
 
 ## API Reference
@@ -77,6 +89,33 @@ const workout = await client.getWorkoutById('workout-uuid')
 
 // Get shared workout
 const sharedWorkout = await client.getWorkoutByShareUrl('https://share.tonal.com/workout/...')
+
+// Estimate workout duration
+const sets = [/* workout sets */]
+const estimate = await client.estimateWorkoutDuration(sets)
+console.log(`Estimated duration: ${estimate.duration} seconds`)
+
+// Create a new workout
+const newWorkout = await client.createWorkout({
+  title: 'My Custom Workout',
+  sets: sets,
+  createdSource: 'WorkoutBuilder',
+  description: 'A great workout!'
+})
+
+// Edit an existing workout
+const updatedWorkout = await client.updateWorkout({
+  id: 'workout-uuid',
+  title: 'My Updated Workout Title',
+  description: 'Updated description with changes',
+  coachId: '00000000-0000-0000-0000-000000000000',
+  sets: modifiedSets,
+  assetId: 'asset-uuid',
+  createdSource: 'WorkoutBuilder'
+})
+
+// Delete a workout
+await client.deleteWorkout('workout-uuid')
 ```
 
 ### User Information
@@ -118,6 +157,10 @@ const chestMovements = movements.filter(m =>
 - `npm run example:user-workouts` - List your workouts
 - `npm run example:workout:id <id>` - Get specific workout
 - `npm run example:workout:share <url>` - Get shared workout
+- `npm run example:estimate` - Estimate workout duration
+- `npm run example:create-workout` - Create a new workout
+- `npm run example:edit-workout` - Create and edit a workout
+- `npm run example:delete-workout` - Create and delete a workout
 
 ## Contributing
 

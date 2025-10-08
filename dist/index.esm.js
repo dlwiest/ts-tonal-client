@@ -1,147 +1,155 @@
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol, Iterator */
-
-
-function __awaiter(thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+class TonalClientError extends Error {
+    constructor(message, statusCode, originalError) {
+        super(message);
+        this.name = 'TonalClientError';
+        this.statusCode = statusCode;
+        this.originalError = originalError;
+    }
 }
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
 
 class TonalClient {
     constructor({ username, password }) {
+        this.baseUrl = 'https://api.tonal.com/v6';
+        this.authUrl = 'https://tonal.auth0.com/oauth/token';
+        this.clientId = 'ERCyexW-xoVG_Yy3RDe-eV4xsOnRHP6L';
+        this.requestTimeout = 30000;
+        this.maxRetries = 3;
         this.username = username;
         this.password = password;
         this.idToken = '';
         this.tokenExpiresAt = 0;
     }
     // TonalClient factory
-    static create(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ username, password }) {
-            const client = new TonalClient({ username, password });
-            yield client.refreshToken();
-            return client;
-        });
+    static async create({ username, password }) {
+        const client = new TonalClient({ username, password });
+        await client.refreshToken();
+        return client;
+    }
+    async sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    async makeRequest(url, options = {}) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                }
+                catch {
+                    errorData = { error: errorText };
+                }
+                throw new TonalClientError(errorData.error_description || errorData.error || `HTTP ${response.status}`, response.status, errorData);
+            }
+            return await response.json();
+        }
+        catch (error) {
+            clearTimeout(timeoutId);
+            if (error instanceof TonalClientError) {
+                throw error;
+            }
+            if (error instanceof Error && error.name === 'AbortError') {
+                throw new TonalClientError('Request timeout', undefined, error);
+            }
+            throw new TonalClientError('Request failed', undefined, error);
+        }
+    }
+    async makeRequestWithRetry(url, options = {}) {
+        let lastError;
+        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+            try {
+                return await this.makeRequest(url, options);
+            }
+            catch (error) {
+                lastError = error instanceof TonalClientError ? error : new TonalClientError('Unknown error', undefined, error);
+                // Don't retry client errors (4xx) or on the last attempt
+                if (attempt === this.maxRetries || (lastError.statusCode && lastError.statusCode < 500)) {
+                    throw lastError;
+                }
+                // Exponential backoff: 1s, 2s, 4s (capped at 10s)
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                await this.sleep(delay);
+            }
+        }
+        throw lastError;
     }
     // Request a new ID token from Auth0
-    refreshToken() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const data = {
-                username: this.username,
-                password: this.password,
-                client_id: 'ERCyexW-xoVG_Yy3RDe-eV4xsOnRHP6L',
-                grant_type: 'password',
-                scope: 'offline_access',
-            };
-            try {
-                const response = yield fetch('https://tonal.auth0.com/oauth/token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
-                if (response.status === 403) {
-                    throw new Error('Invalid username or password');
-                }
-                const json = (yield response.json());
-                this.idToken = json.id_token;
-                this.tokenExpiresAt = Date.now() + json.expires_in * 1000;
+    async refreshToken() {
+        const data = {
+            username: this.username,
+            password: this.password,
+            client_id: this.clientId,
+            grant_type: 'password',
+            scope: 'offline_access',
+        };
+        try {
+            const response = await this.makeRequest(this.authUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            this.idToken = response.id_token;
+            this.tokenExpiresAt = Date.now() + response.expires_in * 1000;
+        }
+        catch (error) {
+            if (error instanceof TonalClientError && error.statusCode === 403) {
+                throw new TonalClientError('Invalid username or password', 403, error.originalError);
             }
-            catch (e) {
-                console.error(e);
-                throw new Error('Failed to retrieve access token');
-            }
-        });
+            throw new TonalClientError('Failed to retrieve access token', undefined, error);
+        }
+    }
+    async ensureValidToken() {
+        // Refresh token if it expires within the next minute
+        if (this.tokenExpiresAt < Date.now() + 60000) {
+            await this.refreshToken();
+        }
     }
     // Get all movements available on Tonal
-    getMovements() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (this.tokenExpiresAt < Date.now()) {
-                    yield this.refreshToken();
-                }
-                const response = yield fetch('https://api.tonal.com/v6/movements', {
-                    headers: {
-                        Authorization: `Bearer ${this.idToken}`,
-                    },
-                });
-                return (yield response.json());
-            }
-            catch (e) {
-                console.error(e);
-                throw new Error('Failed to retrieve movements');
-            }
+    async getMovements() {
+        await this.ensureValidToken();
+        return this.makeRequestWithRetry(`${this.baseUrl}/movements`, {
+            headers: {
+                Authorization: `Bearer ${this.idToken}`,
+            },
         });
     }
     // Get a workout by its ID
-    getWorkoutById(id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (this.tokenExpiresAt < Date.now()) {
-                    yield this.refreshToken();
-                }
-                const response = yield fetch(`https://api.tonal.com/v6/workouts/${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.idToken}`,
-                    },
-                });
-                const json = (yield response.json());
-                return json;
-            }
-            catch (e) {
-                console.error(e);
-                throw new Error('Failed to retrieve workout');
-            }
+    async getWorkoutById(id) {
+        if (!id || typeof id !== 'string') {
+            throw new TonalClientError('Workout ID is required and must be a string');
+        }
+        await this.ensureValidToken();
+        return this.makeRequestWithRetry(`${this.baseUrl}/workouts/${encodeURIComponent(id)}`, {
+            headers: {
+                Authorization: `Bearer ${this.idToken}`,
+            },
         });
     }
     // Get a workout by its share URL
-    getWorkoutByShareUrl(shareUrl) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!shareUrl) {
-                throw new Error('Share URL is required');
-            }
-            const shareId = shareUrl.split('/').pop();
-            try {
-                if (this.tokenExpiresAt < Date.now()) {
-                    yield this.refreshToken();
-                }
-                const response = yield fetch(`https://api.tonal.com/v6/user-workouts/sharing-records/${shareId}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.idToken}`,
-                    },
-                });
-                const json = (yield response.json());
-                return json;
-            }
-            catch (e) {
-                console.error(e);
-                throw new Error('Failed to retrieve workout');
-            }
+    async getWorkoutByShareUrl(shareUrl) {
+        if (!shareUrl || typeof shareUrl !== 'string') {
+            throw new TonalClientError('Share URL is required and must be a string');
+        }
+        const shareId = shareUrl.split('/').pop();
+        if (!shareId) {
+            throw new TonalClientError('Invalid share URL format');
+        }
+        await this.ensureValidToken();
+        return this.makeRequestWithRetry(`${this.baseUrl}/user-workouts/sharing-records/${encodeURIComponent(shareId)}`, {
+            headers: {
+                Authorization: `Bearer ${this.idToken}`,
+            },
         });
     }
 }
 
-export { TonalClient as default };
+export { TonalClientError, TonalClient as default };

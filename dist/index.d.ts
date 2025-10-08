@@ -1,3 +1,13 @@
+interface TonalApiError {
+    error: string;
+    error_description?: string;
+    statusCode?: number;
+}
+declare class TonalClientError extends Error {
+    readonly statusCode?: number;
+    readonly originalError?: unknown;
+    constructor(message: string, statusCode?: number, originalError?: unknown);
+}
 interface OAuthTokenResponse {
     access_token: string;
     id_token: string;
@@ -101,7 +111,7 @@ interface WorkoutSet {
     round: number;
     description: string;
     dropSet: boolean;
-    omitempty: null | any;
+    omitempty?: unknown;
 }
 interface TonalSharedWorkout {
     id: string;
@@ -118,15 +128,24 @@ declare class TonalClient {
     private password;
     private idToken;
     private tokenExpiresAt;
+    private readonly baseUrl;
+    private readonly authUrl;
+    private readonly clientId;
+    private readonly requestTimeout;
+    private readonly maxRetries;
     private constructor();
     static create({ username, password }: {
         username: string;
         password: string;
     }): Promise<TonalClient>;
+    private sleep;
+    private makeRequest;
+    private makeRequestWithRetry;
     private refreshToken;
+    private ensureValidToken;
     getMovements(): Promise<TonalMovement[]>;
     getWorkoutById(id: string): Promise<TonalWorkout>;
     getWorkoutByShareUrl(shareUrl: string): Promise<TonalSharedWorkout>;
 }
 
-export { MuscleGroup, OAuthTokenResponse, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalClient as default };
+export { MuscleGroup, OAuthTokenResponse, TonalApiError, TonalClientError, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalClient as default };
