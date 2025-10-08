@@ -196,8 +196,12 @@ const createAndEditWorkout = async () => {
     
     // Verify deletion
     try {
-      await client.getWorkoutById(updatedWorkout.id)
-      console.log('❌ Unexpected: workout still exists after deletion')
+      const deletedWorkout = await client.getWorkoutById(updatedWorkout.id)
+      if (deletedWorkout.publishState === 'archived') {
+        console.log('✅ Confirmed: workout is now archived (soft-deleted)')
+      } else {
+        console.log('❌ Unexpected: workout still exists and not archived')
+      }
     } catch (error) {
       console.log('✅ Confirmed: workout no longer exists')
     }

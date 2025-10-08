@@ -1,2 +1,5 @@
-export { TonalClient as default } from './client';
-export * from './types';
+import { TonalClient } from './client'
+
+export * from './types'
+export { TonalClient }
+export default TonalClient

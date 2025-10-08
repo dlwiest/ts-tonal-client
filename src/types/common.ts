@@ -1,0 +1,13 @@
+export type MuscleGroup =
+  | 'Obliques'
+  | 'Abs'
+  | 'Shoulders'
+  | 'Glutes'
+  | 'Back'
+  | 'Biceps'
+  | 'Quads'
+  | 'Triceps'
+  | 'Chest'
+  | 'Hamstrings'
+  | 'Calves'
+  | 'Forearms'

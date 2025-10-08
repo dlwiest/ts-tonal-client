@@ -16,7 +16,9 @@ interface OAuthTokenResponse {
     token_type: string;
     expires_in: number;
 }
+
 type MuscleGroup = 'Obliques' | 'Abs' | 'Shoulders' | 'Glutes' | 'Back' | 'Biceps' | 'Quads' | 'Triceps' | 'Chest' | 'Hamstrings' | 'Calves' | 'Forearms';
+
 interface TonalMovement {
     id: string;
     createdAt: string;
@@ -46,44 +48,75 @@ interface TonalMovement {
     featureGroupIds: null | string[];
     isGeneric: boolean;
 }
-interface TonalWorkout {
+
+interface TonalUserDevice {
+    deviceId: string;
+    tonalDeviceId: string;
+    userId: string;
+    createdAt: string;
+    updatedAt: string;
+    loggedIn: boolean;
+    postWorkoutNotifs: boolean;
+    reminderNotifs: boolean;
+    productUpdateNotifs: boolean;
+    socialNotifs: boolean;
+    blogNotifs: boolean;
+    chatbotNotifs: boolean;
+    deviceModel: string;
+    osVersion: string;
+    appVersion: string;
+    platform: string;
+}
+interface TonalGoal {
+    id: string;
+    name: string;
+    description: string;
+    active: boolean;
+    filterItemId: string;
+}
+interface TonalUserGoal {
+    id: string;
+    userID: string;
+    goalID: string;
+    tier: number;
+}
+interface TonalUserInfo {
     id: string;
     createdAt: string;
-    title: string;
-    shortDescription: string;
-    description: string;
-    productionCode: string;
-    assetId: string;
-    coachId: string;
-    sets: WorkoutSet[];
-    duration: number;
-    publishState: string;
-    programId: string | null;
-    level: string;
-    groupIds: string[];
-    targetArea: string;
-    tags: string[] | null;
-    bodyRegions: MuscleGroup[];
-    goalIds: string[] | null;
-    trainingEffectGoals: string[];
-    disableModification: boolean;
-    publishedAt: string;
-    localPublishedAt: string;
-    type: string;
-    userId: string;
-    style: string;
-    trainingType: string;
-    trainingTypeIds: string[] | null;
-    mobileFriendly: boolean;
-    live: boolean;
-    recoveryWeight: boolean;
-    supportedDevices: string[] | null;
-    featureGroupIds: string[] | null;
-    movementIds: string[];
-    muscleGroupsForExclusion: MuscleGroup[] | null;
-    playbackType: string;
-    isImported: boolean;
+    updatedAt: string;
+    deletedAt: string | null;
+    email: string;
+    firstName: string;
+    lastName: string;
+    gender: 'MALE' | 'FEMALE' | string;
+    heightInches: number;
+    weightPounds: number;
+    auth0Id: string;
+    dateOfBirth: string;
+    isGuestAccount: boolean;
+    isDemoAccount: boolean;
+    watchedSafetyVideo: boolean;
+    recentMobileDevice: TonalUserDevice;
+    emailVerified: boolean;
+    username: string;
+    workoutsPerWeek: number;
+    tonalStatus: 'purchased' | string;
+    social: unknown | null;
+    profileAssetID: string | null;
+    mobileWorkoutsEnabled: boolean;
+    accountType: 'PublicUser' | string;
+    location: string;
+    sharingCustomWorkoutsDisabled: boolean;
+    level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | string;
+    goalId: string;
+    goals: TonalUserGoal[];
+    workoutDurationMin: number;
+    workoutDurationMax: number;
+    updatedPreferencesAt: string;
+    primaryDeviceType: 'Classic' | string;
 }
+
+type WorkoutPublishState = 'published' | 'archived' | string;
 interface WorkoutSet {
     id: string;
     workoutId: string;
@@ -113,6 +146,46 @@ interface WorkoutSet {
     dropSet: boolean;
     omitempty?: unknown;
 }
+interface TonalWorkout {
+    id: string;
+    createdAt: string;
+    title: string;
+    shortDescription: string;
+    description: string;
+    productionCode: string;
+    assetId: string;
+    coachId: string;
+    sets: WorkoutSet[];
+    duration: number;
+    publishState: WorkoutPublishState;
+    programId: string | null;
+    level: string;
+    groupIds: string[];
+    targetArea: string;
+    tags: string[] | null;
+    bodyRegions: MuscleGroup[];
+    goalIds: string[] | null;
+    trainingEffectGoals: string[];
+    disableModification: boolean;
+    publishedAt: string;
+    localPublishedAt: string;
+    type: string;
+    userId: string;
+    style: string;
+    trainingType: string;
+    trainingTypeIds: string[] | null;
+    mobileFriendly: boolean;
+    live: boolean;
+    recoveryWeight: boolean;
+    supportedDevices: string[] | null;
+    featureGroupIds: string[] | null;
+    movementIds: string[];
+    accessories?: string[];
+    muscleGroupsForExclusion: MuscleGroup[] | null;
+    playbackType: string;
+    isImported: boolean;
+    createdSource?: unknown | null;
+}
 interface TonalSharedWorkout {
     id: string;
     sharerUserId: string;
@@ -122,30 +195,68 @@ interface TonalSharedWorkout {
     deepLinkUrl: string;
     workoutSnapshot: TonalWorkout;
 }
+interface TonalWorkoutEstimateSet {
+    blockStart: boolean;
+    movementId: string;
+    prescribedReps?: number;
+    prescribedDuration?: number;
+    dropSet: boolean;
+    repetition: number;
+    repetitionTotal: number;
+    blockNumber: number;
+    burnout: boolean;
+    spotter: boolean;
+    eccentric: boolean;
+    chains: boolean;
+    flex: boolean;
+    warmUp: boolean;
+    weightPercentage: number;
+    setGroup: number;
+    round: number;
+    description: string;
+}
+interface TonalWorkoutEstimateResponse {
+    duration: number;
+}
+interface TonalWorkoutCreateRequest {
+    title: string;
+    sets: TonalWorkoutEstimateSet[];
+    createdSource?: 'WorkoutBuilder' | 'FreeLift' | 'SharedWorkout' | 'DailyLift' | 'TonalWorkout' | 'WorkoutGenerator' | 'ActivityFeed';
+    shortDescription?: string;
+    description?: string;
+}
+interface TonalWorkoutUpdateRequest {
+    id: string;
+    title: string;
+    description?: string;
+    coachId: string;
+    sets: TonalWorkoutEstimateSet[];
+    level?: string;
+    assetId: string;
+    createdSource?: 'WorkoutBuilder' | 'FreeLift' | 'SharedWorkout' | 'DailyLift' | 'TonalWorkout' | 'WorkoutGenerator' | 'ActivityFeed';
+}
 
 declare class TonalClient {
-    private username;
-    private password;
-    private idToken;
-    private tokenExpiresAt;
-    private readonly baseUrl;
-    private readonly authUrl;
-    private readonly clientId;
-    private readonly requestTimeout;
-    private readonly maxRetries;
+    private authManager;
+    private httpClient;
+    private workoutService;
+    private movementService;
+    private userService;
     private constructor();
-    static create({ username, password }: {
+    static create(credentials: {
         username: string;
         password: string;
     }): Promise<TonalClient>;
-    private sleep;
-    private makeRequest;
-    private makeRequestWithRetry;
-    private refreshToken;
-    private ensureValidToken;
     getMovements(): Promise<TonalMovement[]>;
-    getWorkoutById(id: string): Promise<TonalWorkout>;
+    getUserInfo(): Promise<TonalUserInfo>;
+    getGoals(): Promise<TonalGoal[]>;
+    getUserWorkouts(offset?: number, limit?: number): Promise<TonalWorkout[]>;
+    getWorkoutById(workoutId: string): Promise<TonalWorkout>;
     getWorkoutByShareUrl(shareUrl: string): Promise<TonalSharedWorkout>;
+    estimateWorkoutDuration(sets: TonalWorkoutEstimateSet[]): Promise<TonalWorkoutEstimateResponse>;
+    createWorkout(workoutData: TonalWorkoutCreateRequest): Promise<TonalWorkout>;
+    updateWorkout(workoutData: TonalWorkoutUpdateRequest): Promise<TonalWorkout>;
+    deleteWorkout(workoutId: string): Promise<void>;
 }
 
-export { MuscleGroup, OAuthTokenResponse, TonalApiError, TonalClientError, TonalMovement, TonalSharedWorkout, TonalWorkout, TonalClient as default };
+export { MuscleGroup, OAuthTokenResponse, TonalApiError, TonalClient, TonalClientError, TonalGoal, TonalMovement, TonalSharedWorkout, TonalUserDevice, TonalUserGoal, TonalUserInfo, TonalWorkout, TonalWorkoutCreateRequest, TonalWorkoutEstimateResponse, TonalWorkoutEstimateSet, TonalWorkoutUpdateRequest, WorkoutPublishState, WorkoutSet, TonalClient as default };
