@@ -31,7 +31,8 @@
     "example:estimate": "tsx examples/estimate-workout.ts",
     "example:create-workout": "tsx examples/create-workout.ts",
     "example:edit-workout": "tsx examples/edit-workout.ts",
-    "example:delete-workout": "tsx examples/delete-workout.ts"
+    "example:delete-workout": "tsx examples/delete-workout.ts",
+    "example:daily-lifts": "tsx examples/get-daily-lifts.ts"
   },
   "repository": {
     "type": "git",

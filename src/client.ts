@@ -56,6 +56,12 @@ export class TonalClient {
     return this.workoutService.getUserWorkouts(offset, limit)
   }
 
+  async getDailyLifts(timeZone?: string): Promise<TonalWorkout[]> {
+    // Get user info to populate device-specific headers
+    const userInfo = await this.getUserInfo()
+    return this.workoutService.getDailyLifts(userInfo, timeZone)
+  }
+
   async getWorkoutById(workoutId: string): Promise<TonalWorkout> {
     return this.workoutService.getWorkoutById(workoutId)
   }

@@ -6,7 +6,8 @@ import {
   TonalWorkoutEstimateResponse,
   TonalWorkoutCreateRequest,
   TonalWorkoutUpdateRequest,
-  TonalClientError
+  TonalClientError,
+  TonalUserInfo
 } from '../types'
 
 export class WorkoutService {
@@ -18,6 +19,36 @@ export class WorkoutService {
       headers: {
         'x-paginate-offset': offset.toString(),
         'x-paginate-limit': limit.toString(),
+      },
+    })
+  }
+
+  async getDailyLifts(userInfo: TonalUserInfo, timeZone?: string): Promise<TonalWorkout[]> {
+    const device = userInfo.recentMobileDevice
+    const userAgent = device.platform === 'ios' 
+      ? `Tonal/3004226 CFNetwork/3860.100.1 Darwin/${device.osVersion}`
+      : `Tonal/${device.appVersion}`
+
+    // Use provided timezone, or auto-detect from system, or fall back to UTC
+    let detectedTimeZone = timeZone
+    if (!detectedTimeZone) {
+      try {
+        detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      } catch {
+        detectedTimeZone = 'UTC'
+      }
+    }
+
+    return this.httpClient.request(`/user-workouts?types=DailyLift`, {
+      method: 'GET',
+      headers: {
+        'Time-Zone': detectedTimeZone,
+        'AppVersion': device.appVersion,
+        'DeviceId': device.tonalDeviceId,
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'User-Agent': userAgent,
       },
     })
   }

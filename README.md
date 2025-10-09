@@ -4,7 +4,7 @@ A comprehensive TypeScript client for accessing Tonal's API. This library provid
 
 ## Features
 
-- 🏋️ **Complete Workout Management** - Get, create, estimate, and share workouts
+- 🏋️ **Complete Workout Management** - Get, create, estimate, and share workouts including daily lifts
 - 👤 **User Management** - Access user info, goals, and preferences  
 - 💪 **Movement Database** - Browse all available Tonal movements
 - 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
@@ -73,6 +73,9 @@ npm run example:edit-workout
 
 # Delete a workout
 npm run example:delete-workout
+
+# Get daily lifts
+npm run example:daily-lifts
 ```
 
 ## API Reference
@@ -83,6 +86,13 @@ npm run example:delete-workout
 // Get your workouts (with pagination)
 const workouts = await client.getUserWorkouts(0, 10)
 console.log(`You have ${workouts.length} workouts`)
+
+// Get daily lifts (auto-detects timezone)
+const dailyLifts = await client.getDailyLifts()
+console.log(`You have ${dailyLifts.length} daily lifts`)
+
+// Get daily lifts with specific timezone
+const dailyLiftsEST = await client.getDailyLifts('America/New_York')
 
 // Get specific workout details  
 const workout = await client.getWorkoutById('workout-uuid')
@@ -161,6 +171,7 @@ const chestMovements = movements.filter(m =>
 - `npm run example:create-workout` - Create a new workout
 - `npm run example:edit-workout` - Create and edit a workout
 - `npm run example:delete-workout` - Create and delete a workout
+- `npm run example:daily-lifts` - Get daily lifts with auto-detected timezone
 
 ## Contributing
 
