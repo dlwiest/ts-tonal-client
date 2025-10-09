@@ -32,7 +32,10 @@
     "example:create-workout": "tsx examples/create-workout.ts",
     "example:edit-workout": "tsx examples/edit-workout.ts",
     "example:delete-workout": "tsx examples/delete-workout.ts",
-    "example:daily-lifts": "tsx examples/get-daily-lifts.ts"
+    "example:daily-lifts": "tsx examples/get-daily-lifts.ts",
+    "example:training-effect-goals": "tsx examples/get-training-effect-goals.ts",
+    "example:training-types": "tsx examples/get-training-types.ts",
+    "example:goal-metrics": "tsx examples/get-goal-metrics.ts"
   },
   "repository": {
     "type": "git",

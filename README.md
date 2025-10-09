@@ -76,6 +76,12 @@ npm run example:delete-workout
 
 # Get daily lifts
 npm run example:daily-lifts
+
+# Get training effect goals
+npm run example:training-effect-goals
+
+# Get training types
+npm run example:training-types
 ```
 
 ## API Reference
@@ -142,6 +148,27 @@ const goals = await client.getGoals()
 goals.forEach(goal => {
   console.log(`${goal.name}: ${goal.description}`)
 })
+
+// Get training effect goals with relationships
+const trainingGoals = await client.getTrainingEffectGoals()
+console.log(`${trainingGoals.goals.length} training goals available`)
+trainingGoals.relations.forEach(relation => {
+  console.log(`Primary goal relationships found`)
+})
+
+// Get all training types
+const trainingTypes = await client.getTrainingTypes()
+console.log(`${trainingTypes.length} training types available`)
+trainingTypes.forEach(type => {
+  console.log(`${type.name}: ${type.description}`)
+})
+
+// Get goal metrics
+const goalMetrics = await client.getGoalMetrics()
+console.log(`${goalMetrics.length} goal metrics available`)
+goalMetrics.forEach(metric => {
+  console.log(`${metric.name}: ${metric.description}`)
+})
 ```
 
 ### Movements
@@ -172,6 +199,8 @@ const chestMovements = movements.filter(m =>
 - `npm run example:edit-workout` - Create and edit a workout
 - `npm run example:delete-workout` - Create and delete a workout
 - `npm run example:daily-lifts` - Get daily lifts with auto-detected timezone
+- `npm run example:training-effect-goals` - Get training effect goals and relationships
+- `npm run example:training-types` - Get all available training types
 
 ## Contributing
 

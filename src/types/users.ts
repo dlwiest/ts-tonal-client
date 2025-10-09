@@ -25,6 +25,41 @@ export interface TonalGoal {
   filterItemId: string // TODO: investigate what filterItemId is used for
 }
 
+export interface TonalTrainingEffectGoal {
+  id: string
+  name: string
+  description: string
+  active: boolean
+  filterItemId: string
+}
+
+export interface TonalTrainingEffectGoalRelation {
+  id: string // Primary goal ID
+  secondary: string[] // Secondary related goal IDs
+  tertiary: string[] // Tertiary related goal IDs
+}
+
+export interface TonalTrainingEffectGoalsResponse {
+  goals: TonalTrainingEffectGoal[]
+  relations: TonalTrainingEffectGoalRelation[]
+}
+
+export interface TonalTrainingType {
+  id: string
+  name: string
+  description: string
+  assetId: string
+  infoVidId: string
+  filterItemId: string
+}
+
+export interface TonalGoalMetric {
+  id: string
+  name: string
+  goalId: string // References TonalTrainingEffectGoal.id
+  description: string
+}
+
 export interface TonalUserGoal {
   id: string
   userID: string

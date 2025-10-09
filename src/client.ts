@@ -10,6 +10,9 @@ import {
   TonalWorkout,
   TonalUserInfo,
   TonalGoal,
+  TonalTrainingEffectGoalsResponse,
+  TonalTrainingType,
+  TonalGoalMetric,
   TonalWorkoutEstimateSet,
   TonalWorkoutEstimateResponse,
   TonalWorkoutCreateRequest,
@@ -49,6 +52,18 @@ export class TonalClient {
 
   async getGoals(): Promise<TonalGoal[]> {
     return this.userService.getGoals()
+  }
+
+  async getTrainingEffectGoals(): Promise<TonalTrainingEffectGoalsResponse> {
+    return this.userService.getTrainingEffectGoals()
+  }
+
+  async getTrainingTypes(): Promise<TonalTrainingType[]> {
+    return this.userService.getTrainingTypes()
+  }
+
+  async getGoalMetrics(): Promise<TonalGoalMetric[]> {
+    return this.userService.getGoalMetrics()
   }
 
   // Workout operations
