@@ -82,6 +82,30 @@ npm run example:training-effect-goals
 
 # Get training types
 npm run example:training-types
+
+# Get user settings
+npm run example:user-settings
+
+# Get daily metrics
+npm run example:daily-metrics
+
+# Get current workout streak
+npm run example:current-streak
+
+# Get workout activity history
+npm run example:activity-summaries
+
+# Get lifetime user statistics
+npm run example:user-statistics
+
+# Get achievement stats and milestones
+npm run example:achievement-stats
+
+# Get earned achievement history
+npm run example:achievements
+
+# Get home calendar and workout recommendations
+npm run example:home-calendar
 ```
 
 ## API Reference
@@ -169,6 +193,68 @@ console.log(`${goalMetrics.length} goal metrics available`)
 goalMetrics.forEach(metric => {
   console.log(`${metric.name}: ${metric.description}`)
 })
+
+// Get comprehensive user settings
+const userSettings = await client.getUserSettings()
+console.log(`Audio settings: ${userSettings.overallVolume * 100}% volume`)
+console.log(`Preferred music service: ${userSettings.preferredMusicService}`)
+console.log(`Time zone: ${userSettings.timeZone}`)
+console.log(`Total settings tracked: ${Object.keys(userSettings).length}`)
+
+// Get daily fitness metrics (analyzes 60 days, shows recent 10 workouts)
+const dailyMetrics = await client.getDailyMetrics(60)
+const activeDays = dailyMetrics.filter(day => day.totalWorkouts > 0)
+console.log(`Workout frequency over 60 days: ${(activeDays.length / dailyMetrics.length * 100).toFixed(1)}%`)
+console.log(`Total volume (all workouts): ${activeDays.reduce((sum, day) => sum + day.totalVolume, 0).toLocaleString()} lbs`)
+console.log(`Average workout duration: ${Math.round(activeDays.reduce((sum, day) => sum + day.totalDuration, 0) / activeDays.length / 60)} minutes`)
+
+// Get current workout streak
+const streak = await client.getCurrentStreak()
+console.log(`Current streak: ${streak.currentStreak} workouts`)
+console.log(`Personal best: ${streak.maxStreak} workouts`)
+console.log(`Progress to personal best: ${Math.round((streak.currentStreak / streak.maxStreak) * 100)}%`)
+
+// Get comprehensive workout activity history
+const activities = await client.getActivitySummaries()
+console.log(`Total workouts completed: ${activities.length}`)
+const totalVolume = activities.reduce((sum, activity) => sum + activity.totalVolume, 0)
+console.log(`Total volume lifted: ${totalVolume.toLocaleString()} lbs`)
+const guidedWorkouts = activities.filter(a => a.isGuidedWorkout).length
+console.log(`Guided vs Free Lift: ${guidedWorkouts}/${activities.length - guidedWorkouts}`)
+
+// Get lifetime statistics and achievements
+const stats = await client.getUserStatistics()
+console.log(`Total volume: ${stats.volume.total.toLocaleString()} lbs over ${stats.workouts.total} workouts`)
+console.log(`Average per workout: ${stats.volume.avgVolumePerWorkout.toLocaleString()} lbs`)
+console.log(`Total workout time: ${Math.round(stats.workouts.totalDuration / 3600)} hours`)
+console.log(`Movement diversity: ${stats.movements.total} unique movements performed`)
+
+// Get achievement progress and upcoming milestones
+const achievementStats = await client.getAchievementStats()
+console.log(`Achievements earned: ${achievementStats.totalAchievements}`)
+console.log(`Upcoming milestones: ${achievementStats.nextMilestones.length}`)
+achievementStats.nextMilestones.forEach(milestone => {
+  console.log(`Next goal: ${milestone.name} (${milestone.value.toLocaleString()})`)
+})
+
+// Get complete earned achievement history
+const earnedAchievements = await client.getAchievements()
+console.log(`Total achievements earned: ${earnedAchievements.length}`)
+const recentAchievement = earnedAchievements[0]
+console.log(`Most recent: ${recentAchievement.name} (${new Date(recentAchievement.createdAt).toLocaleDateString()})`)
+const categories = [...new Set(earnedAchievements.map(a => a.achievement.achievementCategory.name))]
+console.log(`Achievement categories: ${categories.join(', ')}`)
+
+// Get home calendar with workout history and recommendations
+const homeCalendar = await client.getHomeCalendar()
+const completedWorkouts = homeCalendar.dailySchedules.filter(day => 
+  day.tiles.some(tile => tile.completed)
+).length
+const recommendationCategories = [...new Set(
+  homeCalendar.dailySchedules.map(day => day.recommendationType).filter(Boolean)
+)]
+console.log(`Completed workout days: ${completedWorkouts}`)
+console.log(`Recommendation categories: ${recommendationCategories.join(', ')}`)
 ```
 
 ### Movements
@@ -201,6 +287,15 @@ const chestMovements = movements.filter(m =>
 - `npm run example:daily-lifts` - Get daily lifts with auto-detected timezone
 - `npm run example:training-effect-goals` - Get training effect goals and relationships
 - `npm run example:training-types` - Get all available training types
+- `npm run example:goal-metrics` - Get goal metrics and relationships
+- `npm run example:user-settings` - Get comprehensive user settings and preferences
+- `npm run example:daily-metrics` - Get daily fitness metrics with workout analytics
+- `npm run example:current-streak` - Get current workout streak and personal best
+- `npm run example:activity-summaries` - Get comprehensive workout activity history and analytics
+- `npm run example:user-statistics` - Get lifetime user statistics and achievement milestones
+- `npm run example:achievement-stats` - Get achievement progress and upcoming milestone targets
+- `npm run example:achievements` - Get complete earned achievement history with timeline analytics
+- `npm run example:home-calendar` - Get home calendar with workout history and personalized recommendations
 
 ## Contributing
 

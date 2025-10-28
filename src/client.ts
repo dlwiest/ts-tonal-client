@@ -13,6 +13,14 @@ import {
   TonalTrainingEffectGoalsResponse,
   TonalTrainingType,
   TonalGoalMetric,
+  TonalUserSettings,
+  TonalDailyMetrics,
+  TonalCurrentStreak,
+  TonalActivitySummary,
+  TonalUserStatistics,
+  TonalAchievementStats,
+  TonalEarnedAchievement,
+  TonalHomeCalendar,
   TonalWorkoutEstimateSet,
   TonalWorkoutEstimateResponse,
   TonalWorkoutCreateRequest,
@@ -64,6 +72,46 @@ export class TonalClient {
 
   async getGoalMetrics(): Promise<TonalGoalMetric[]> {
     return this.userService.getGoalMetrics()
+  }
+
+  async getUserSettings(): Promise<TonalUserSettings> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getUserSettings(userInfo.id)
+  }
+
+  async getDailyMetrics(days: number = 60): Promise<TonalDailyMetrics[]> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getDailyMetrics(userInfo.id, days)
+  }
+
+  async getCurrentStreak(): Promise<TonalCurrentStreak> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getCurrentStreak(userInfo.id)
+  }
+
+  async getActivitySummaries(): Promise<TonalActivitySummary[]> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getActivitySummaries(userInfo.id)
+  }
+
+  async getUserStatistics(): Promise<TonalUserStatistics> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getUserStatistics(userInfo.id)
+  }
+
+  async getAchievementStats(): Promise<TonalAchievementStats> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getAchievementStats(userInfo.id)
+  }
+
+  async getAchievements(): Promise<TonalEarnedAchievement[]> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getAchievements(userInfo.id)
+  }
+
+  async getHomeCalendar(): Promise<TonalHomeCalendar> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getHomeCalendar(userInfo.id)
   }
 
   // Workout operations

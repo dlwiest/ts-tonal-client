@@ -35,7 +35,15 @@
     "example:daily-lifts": "tsx examples/get-daily-lifts.ts",
     "example:training-effect-goals": "tsx examples/get-training-effect-goals.ts",
     "example:training-types": "tsx examples/get-training-types.ts",
-    "example:goal-metrics": "tsx examples/get-goal-metrics.ts"
+    "example:goal-metrics": "tsx examples/get-goal-metrics.ts",
+    "example:user-settings": "tsx examples/get-user-settings.ts",
+    "example:daily-metrics": "tsx examples/get-daily-metrics.ts",
+    "example:current-streak": "tsx examples/get-current-streak.ts",
+    "example:activity-summaries": "tsx examples/get-activity-summaries.ts",
+    "example:user-statistics": "tsx examples/get-user-statistics.ts",
+    "example:achievement-stats": "tsx examples/get-achievement-stats.ts",
+    "example:achievements": "tsx examples/get-achievements.ts",
+    "example:home-calendar": "tsx examples/get-home-calendar.ts"
   },
   "repository": {
     "type": "git",
