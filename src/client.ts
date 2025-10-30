@@ -27,6 +27,8 @@ import {
   TonalWorkoutUpdateRequest,
   TonalMuscleReadiness,
   TonalProgram,
+  TonalTargetScoresResponse,
+  TonalMetricScoresResponse,
 } from './types'
 
 export class TonalClient {
@@ -123,6 +125,16 @@ export class TonalClient {
 
   async getProgramById(programId: string): Promise<TonalProgram> {
     return this.userService.getProgramById(programId)
+  }
+
+  async getTargetScores(): Promise<TonalTargetScoresResponse> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getTargetScores(userInfo.id)
+  }
+
+  async getMetricScores(startWeek?: number): Promise<TonalMetricScoresResponse> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getMetricScores(userInfo.id, startWeek)
   }
 
   // Workout operations

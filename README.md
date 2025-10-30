@@ -9,6 +9,8 @@ A comprehensive TypeScript client for accessing Tonal's API. This library provid
 - 💪 **Movement Database** - Browse all available Tonal movements
 - 🎯 **Muscle Readiness Tracking** - Monitor recovery status for all muscle groups
 - 📋 **Program Details** - Get comprehensive information about training programs
+- 🎯 **Target Score Tracking** - Get weekly fitness targets and progress ranges for all metrics
+- 📈 **Metric Score Analysis** - Track actual performance vs targets with comprehensive analytics
 - 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
 - 📝 **Full TypeScript Support** - Comprehensive types for all API responses
 - 🔄 **Smart Token Management** - Automatic authentication and token refresh
@@ -114,6 +116,12 @@ npm run example:muscle-readiness
 
 # Get detailed program information by ID
 npm run example:program-by-id
+
+# Get weekly fitness targets and progress tracking
+npm run example:target-scores
+
+# Get actual performance scores vs targets with comprehensive analytics
+npm run example:metric-scores
 ```
 
 ## API Reference
@@ -316,6 +324,73 @@ const schedule = program.cadence.map((isWorkout, i) =>
   isWorkout ? `${days[i]}: Workout` : `${days[i]}: Rest`
 )
 console.log(`Weekly schedule: ${schedule.join(', ')}`)
+
+// Get weekly fitness targets for all metrics
+const targetScores = await client.getTargetScores()
+console.log('Weekly Fitness Targets:')
+
+Object.entries(targetScores).forEach(([metricId, weeklyTargets]) => {
+  // Get the most recent week target
+  const currentTarget = weeklyTargets.sort((a, b) => b.weekNumber - a.weekNumber)[0]
+  const year = Math.floor(currentTarget.weekNumber / 100)
+  const week = currentTarget.weekNumber % 100
+  
+  console.log(`Metric ${metricId}:`)
+  console.log(`  Target: ${currentTarget.target}`)
+  console.log(`  Range: ${currentTarget.lowRange} - ${currentTarget.highRange}`)
+  console.log(`  Week: ${week}/${year}`)
+})
+
+// Analyze target trends
+const volumeTargets = targetScores['2a2f499e-ae13-45d1-b501-aa1d25ff6a4a'] // Volume metric
+if (volumeTargets && volumeTargets.length >= 2) {
+  const sorted = volumeTargets.sort((a, b) => a.weekNumber - b.weekNumber)
+  const firstTarget = sorted[0].target
+  const lastTarget = sorted[sorted.length - 1].target
+  const change = Math.round(((lastTarget - firstTarget) / firstTarget) * 100)
+  console.log(`Volume trend: ${change > 0 ? '+' : ''}${change}% over ${sorted.length} weeks`)
+}
+
+// Get actual performance scores vs targets with comprehensive analytics
+const metricScores = await client.getMetricScores()
+// Optional: get scores starting from a specific week
+// const metricScores = await client.getMetricScores(202440) // Start from week 40 of 2024
+
+console.log('Performance vs Targets Analysis:')
+
+Object.entries(metricScores).forEach(([metricId, weeklyScores]) => {
+  // Get the most recent week score
+  const currentScore = weeklyScores.sort((a, b) => b.weekNumber - a.weekNumber)[0]
+  const year = Math.floor(currentScore.weekNumber / 100)
+  const week = currentScore.weekNumber % 100
+  
+  console.log(`Metric ${metricId}:`)
+  console.log(`  Actual Score: ${currentScore.score}`)
+  console.log(`  Week: ${week}/${year}`)
+})
+
+// Compare against targets to see goal achievement
+const volumeScores = metricScores['2a2f499e-ae13-45d1-b501-aa1d25ff6a4a'] // Volume metric
+const volumeTargets = targetScores['2a2f499e-ae13-45d1-b501-aa1d25ff6a4a']
+if (volumeScores && volumeTargets) {
+  const latestScore = volumeScores.sort((a, b) => b.weekNumber - a.weekNumber)[0]
+  const matchingTarget = volumeTargets.find(t => t.weekNumber === latestScore.weekNumber)
+  
+  if (matchingTarget) {
+    const achievementPercent = Math.round((latestScore.score / matchingTarget.target) * 100)
+    const inRange = latestScore.score >= matchingTarget.lowRange && latestScore.score <= matchingTarget.highRange
+    console.log(`Volume Achievement: ${achievementPercent}% of target (${inRange ? 'In Range' : 'Out of Range'})`)
+  }
+}
+
+// Calculate performance trends
+if (volumeScores && volumeScores.length >= 2) {
+  const sorted = volumeScores.sort((a, b) => a.weekNumber - b.weekNumber)
+  const firstScore = sorted[0].score
+  const lastScore = sorted[sorted.length - 1].score
+  const change = Math.round(((lastScore - firstScore) / firstScore) * 100)
+  console.log(`Volume performance trend: ${change > 0 ? '+' : ''}${change}% over ${sorted.length} weeks`)
+}
 ```
 
 ### Movements
@@ -359,6 +434,8 @@ const chestMovements = movements.filter(m =>
 - `npm run example:home-calendar` - Get home calendar with workout history and personalized recommendations
 - `npm run example:muscle-readiness` - Get muscle readiness percentages and recovery recommendations
 - `npm run example:program-by-id` - Get comprehensive program details including all workouts and structure
+- `npm run example:target-scores` - Get weekly fitness targets with ranges and trend analysis for all metrics
+- `npm run example:metric-scores` - Get actual performance scores vs targets with comprehensive goal achievement analytics
 
 ## Contributing
 

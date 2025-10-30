@@ -450,6 +450,30 @@ export interface TonalMuscleReadiness {
   Calves: number // Readiness percentage (0-100)
 }
 
+export interface TonalTargetScore {
+  userId: string // User ID
+  weekNumber: number // Week identifier (YYYYWW format)
+  metricId: string // References TonalGoalMetric.id
+  target: number // Target value for this metric this week
+  lowRange: number // Lower bound of acceptable range
+  highRange: number // Upper bound of acceptable range
+}
+
+export interface TonalTargetScoresResponse {
+  [metricId: string]: TonalTargetScore[] // Organized by metric ID, each containing weekly targets
+}
+
+export interface TonalMetricScore {
+  userId: string // User ID
+  weekNumber: number // Week identifier (YYYYWW format)
+  metricId: string // References TonalGoalMetric.id
+  score: number // Actual score achieved for this metric this week
+}
+
+export interface TonalMetricScoresResponse {
+  [metricId: string]: TonalMetricScore[] // Organized by metric ID, each containing weekly actual scores
+}
+
 
 export interface TonalUserInfo {
   id: string

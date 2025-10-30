@@ -1,5 +1,5 @@
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse } from '../types'
 
 export class UserService {
   constructor(private httpClient: HttpClient) { }
@@ -99,6 +99,17 @@ export class UserService {
 
   async getProgramById(programId: string): Promise<TonalProgram> {
     return this.httpClient.request(`/programs/${programId}`)
+  }
+
+  async getTargetScores(userId: string): Promise<TonalTargetScoresResponse> {
+    return this.httpClient.request(`/users/${userId}/target-scores`)
+  }
+
+  async getMetricScores(userId: string, startWeek?: number): Promise<TonalMetricScoresResponse> {
+    const url = startWeek 
+      ? `/users/${userId}/metric-scores?startWeek=${startWeek}`
+      : `/users/${userId}/metric-scores`
+    return this.httpClient.request(url)
   }
 
   // TODO: Future endpoint to consider implementing
