@@ -44,7 +44,8 @@
     "example:achievement-stats": "tsx examples/get-achievement-stats.ts",
     "example:achievements": "tsx examples/get-achievements.ts",
     "example:home-calendar": "tsx examples/get-home-calendar.ts",
-    "example:muscle-readiness": "tsx examples/get-muscle-readiness.ts"
+    "example:muscle-readiness": "tsx examples/get-muscle-readiness.ts",
+    "example:program-by-id": "tsx examples/get-program-by-id.ts"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,5 @@
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram } from '../types'
 
 export class UserService {
   constructor(private httpClient: HttpClient) { }
@@ -95,6 +95,10 @@ export class UserService {
 
   async getMuscleReadiness(userId: string): Promise<TonalMuscleReadiness> {
     return this.httpClient.request(`/users/${userId}/muscle-readiness/current`)
+  }
+
+  async getProgramById(programId: string): Promise<TonalProgram> {
+    return this.httpClient.request(`/programs/${programId}`)
   }
 
   // TODO: Future endpoint to consider implementing

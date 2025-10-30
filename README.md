@@ -8,6 +8,7 @@ A comprehensive TypeScript client for accessing Tonal's API. This library provid
 - 👤 **User Management** - Access user info, goals, and preferences  
 - 💪 **Movement Database** - Browse all available Tonal movements
 - 🎯 **Muscle Readiness Tracking** - Monitor recovery status for all muscle groups
+- 📋 **Program Details** - Get comprehensive information about training programs
 - 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
 - 📝 **Full TypeScript Support** - Comprehensive types for all API responses
 - 🔄 **Smart Token Management** - Automatic authentication and token refresh
@@ -110,6 +111,9 @@ npm run example:home-calendar
 
 # Get muscle readiness and recovery status
 npm run example:muscle-readiness
+
+# Get detailed program information by ID
+npm run example:program-by-id
 ```
 
 ## API Reference
@@ -287,6 +291,31 @@ const needsRecovery = Object.entries(readiness)
 if (needsRecovery.length > 0) {
   console.log(`Muscles needing recovery: ${needsRecovery.join(', ')}`)
 }
+
+// Get detailed program information
+const programId = 'f243be64-76f2-4073-8ce7-8adb37657e9f' // Example: House of Volume
+const program = await client.getProgramById(programId)
+console.log(`Program: ${program.name}`)
+console.log(`Level: ${program.level}`)
+console.log(`Duration: ${program.weeks} weeks`)
+console.log(`Workouts per week: ${program.workoutsPerWeek}`)
+console.log(`Total workouts: ${program.workouts.length}`)
+console.log(`Description: ${program.description}`)
+
+// Analyze program structure
+const targetAreas = program.workouts.map(w => w.targetArea)
+const targetAreaCounts = targetAreas.reduce((acc, area) => {
+  acc[area] = (acc[area] || 0) + 1
+  return acc
+}, {} as Record<string, number>)
+console.log(`Target area distribution:`, targetAreaCounts)
+
+// Show weekly schedule
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const schedule = program.cadence.map((isWorkout, i) => 
+  isWorkout ? `${days[i]}: Workout` : `${days[i]}: Rest`
+)
+console.log(`Weekly schedule: ${schedule.join(', ')}`)
 ```
 
 ### Movements
@@ -329,6 +358,7 @@ const chestMovements = movements.filter(m =>
 - `npm run example:achievements` - Get complete earned achievement history with timeline analytics
 - `npm run example:home-calendar` - Get home calendar with workout history and personalized recommendations
 - `npm run example:muscle-readiness` - Get muscle readiness percentages and recovery recommendations
+- `npm run example:program-by-id` - Get comprehensive program details including all workouts and structure
 
 ## Contributing
 

@@ -450,6 +450,7 @@ export interface TonalMuscleReadiness {
   Calves: number // Readiness percentage (0-100)
 }
 
+
 export interface TonalUserInfo {
   id: string
   createdAt: string
