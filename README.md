@@ -7,6 +7,7 @@ A comprehensive TypeScript client for accessing Tonal's API. This library provid
 - 🏋️ **Complete Workout Management** - Get, create, estimate, and share workouts including daily lifts
 - 👤 **User Management** - Access user info, goals, and preferences  
 - 💪 **Movement Database** - Browse all available Tonal movements
+- 🎯 **Muscle Readiness Tracking** - Monitor recovery status for all muscle groups
 - 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
 - 📝 **Full TypeScript Support** - Comprehensive types for all API responses
 - 🔄 **Smart Token Management** - Automatic authentication and token refresh
@@ -106,6 +107,9 @@ npm run example:achievements
 
 # Get home calendar and workout recommendations
 npm run example:home-calendar
+
+# Get muscle readiness and recovery status
+npm run example:muscle-readiness
 ```
 
 ## API Reference
@@ -255,6 +259,34 @@ const recommendationCategories = [...new Set(
 )]
 console.log(`Completed workout days: ${completedWorkouts}`)
 console.log(`Recommendation categories: ${recommendationCategories.join(', ')}`)
+
+// Get muscle readiness for all muscle groups
+const readiness = await client.getMuscleReadiness()
+console.log(`Muscle Readiness Status:`)
+console.log(`  Chest: ${readiness.Chest}%`)
+console.log(`  Shoulders: ${readiness.Shoulders}%`)
+console.log(`  Back: ${readiness.Back}%`)
+console.log(`  Triceps: ${readiness.Triceps}%`)
+console.log(`  Biceps: ${readiness.Biceps}%`)
+console.log(`  Abs: ${readiness.Abs}%`)
+console.log(`  Obliques: ${readiness.Obliques}%`)
+console.log(`  Quads: ${readiness.Quads}%`)
+console.log(`  Glutes: ${readiness.Glutes}%`)
+console.log(`  Hamstrings: ${readiness.Hamstrings}%`)
+console.log(`  Calves: ${readiness.Calves}%`)
+
+// Calculate average readiness
+const allMuscles = Object.values(readiness)
+const averageReadiness = Math.round(allMuscles.reduce((sum, val) => sum + val, 0) / allMuscles.length)
+console.log(`Average readiness: ${averageReadiness}%`)
+
+// Find muscles that need recovery (< 60%)
+const needsRecovery = Object.entries(readiness)
+  .filter(([_, percentage]) => percentage < 60)
+  .map(([muscle]) => muscle)
+if (needsRecovery.length > 0) {
+  console.log(`Muscles needing recovery: ${needsRecovery.join(', ')}`)
+}
 ```
 
 ### Movements
@@ -296,6 +328,7 @@ const chestMovements = movements.filter(m =>
 - `npm run example:achievement-stats` - Get achievement progress and upcoming milestone targets
 - `npm run example:achievements` - Get complete earned achievement history with timeline analytics
 - `npm run example:home-calendar` - Get home calendar with workout history and personalized recommendations
+- `npm run example:muscle-readiness` - Get muscle readiness percentages and recovery recommendations
 
 ## Contributing
 

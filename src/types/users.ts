@@ -436,6 +436,20 @@ export interface TonalUserGoal {
   tier: number // Priority tier: 1=highest priority, 2=medium, 3=lowest
 }
 
+export interface TonalMuscleReadiness {
+  Chest: number // Readiness percentage (0-100)
+  Shoulders: number // Readiness percentage (0-100)
+  Back: number // Readiness percentage (0-100)
+  Triceps: number // Readiness percentage (0-100)
+  Biceps: number // Readiness percentage (0-100)
+  Abs: number // Readiness percentage (0-100)
+  Obliques: number // Readiness percentage (0-100)
+  Quads: number // Readiness percentage (0-100)
+  Glutes: number // Readiness percentage (0-100)
+  Hamstrings: number // Readiness percentage (0-100)
+  Calves: number // Readiness percentage (0-100)
+}
+
 export interface TonalUserInfo {
   id: string
   createdAt: string
