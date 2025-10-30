@@ -1,5 +1,8 @@
 # TypeScript Tonal Client
 
+[![npm version](https://badge.fury.io/js/@dlwiest%2Fts-tonal-client.svg)](https://badge.fury.io/js/@dlwiest%2Fts-tonal-client)
+[![npm downloads](https://img.shields.io/npm/dm/@dlwiest/ts-tonal-client.svg)](https://www.npmjs.com/package/@dlwiest/ts-tonal-client)
+
 A comprehensive TypeScript client for accessing Tonal's API. This library provides a robust interface to retrieve workout data, user information, movements, and more from your Tonal account.
 
 ## Features
@@ -17,12 +20,19 @@ A comprehensive TypeScript client for accessing Tonal's API. This library provid
 
 ## Installation
 
-Clone the repository and install dependencies:
+### Option 1: Install from npm (Recommended)
+
+```bash
+npm install @dlwiest/ts-tonal-client
+```
+
+### Option 2: Clone and build from source
 
 ```bash
 git clone https://github.com/dlwiest/ts-tonal-client.git
 cd ts-tonal-client
 npm install
+npm run build
 ```
 
 ## Quick Start
@@ -30,7 +40,7 @@ npm install
 Basic usage:
 
 ```typescript
-import TonalClient from './src/index'
+import TonalClient from '@dlwiest/ts-tonal-client'
 
 const client = await TonalClient.create({
   username: 'your_email@example.com',

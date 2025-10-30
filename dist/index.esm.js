@@ -150,6 +150,34 @@ class WorkoutService {
             },
         });
     }
+    async getDailyLifts(userInfo, timeZone) {
+        const device = userInfo.recentMobileDevice;
+        const userAgent = device.platform === 'ios'
+            ? `Tonal/3004226 CFNetwork/3860.100.1 Darwin/${device.osVersion}`
+            : `Tonal/${device.appVersion}`;
+        // Use provided timezone, or auto-detect from system, or fall back to UTC
+        let detectedTimeZone = timeZone;
+        if (!detectedTimeZone) {
+            try {
+                detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            }
+            catch {
+                detectedTimeZone = 'UTC';
+            }
+        }
+        return this.httpClient.request(`/user-workouts?types=DailyLift`, {
+            method: 'GET',
+            headers: {
+                'Time-Zone': detectedTimeZone,
+                'AppVersion': device.appVersion,
+                'DeviceId': device.tonalDeviceId,
+                'Accept': '*/*',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'User-Agent': userAgent,
+            },
+        });
+    }
     async getWorkoutById(workoutId) {
         if (!workoutId?.trim()) {
             throw new TonalClientError('Workout ID is required');
@@ -250,6 +278,89 @@ class UserService {
     async getGoals() {
         return this.httpClient.request('/goals');
     }
+    async getTrainingEffectGoals() {
+        return this.httpClient.request('/training-effect-goals');
+    }
+    async getTrainingTypes() {
+        return this.httpClient.request('/training-types');
+    }
+    async getGoalMetrics() {
+        return this.httpClient.request('/goal-metrics');
+    }
+    /**
+     * Register or update a personal device for the user.
+     *
+     * NOTE: This endpoint has side effects and should be used with caution.
+     * It registers the device with Tonal's system and may affect notification
+     * settings and device management. For reverse-engineered clients, this
+     * could be considered unauthorized device registration.
+     *
+     * @internal This method is primarily for API completeness and documentation
+     */
+    async registerPersonalDevice(userId, deviceInfo) {
+        return this.httpClient.request(`/users/${userId}/personal-devices`, {
+            method: 'POST',
+            body: JSON.stringify(deviceInfo),
+        });
+    }
+    /**
+     * Get user privacy permissions/settings.
+     *
+     * Returns what information this user has made public vs private.
+     * Useful for understanding social features and respecting privacy preferences.
+     *
+     * @internal This method is for understanding user privacy settings
+     */
+    async getUserPermissions(userId) {
+        return this.httpClient.request(`/users/${userId}/permissions`);
+    }
+    /**
+     * Get comprehensive user settings and preferences.
+     *
+     * Returns audio/visual settings, feature flags, onboarding states, and user preferences.
+     * Provides insight into Tonal's full feature ecosystem and user customization options.
+     *
+     * @internal This method is for understanding user preferences and feature usage
+     */
+    async getUserSettings(userId) {
+        return this.httpClient.request(`/users/${userId}/user-settings`);
+    }
+    async getDailyMetrics(userId, days = 60) {
+        return this.httpClient.request(`/users/${userId}/metrics/daily?days=${days}`);
+    }
+    async getCurrentStreak(userId) {
+        return this.httpClient.request(`/users/${userId}/streaks/current`);
+    }
+    async getActivitySummaries(userId) {
+        return this.httpClient.request(`/users/${userId}/activity-summaries`);
+    }
+    async getUserStatistics(userId) {
+        return this.httpClient.request(`/users/${userId}/statistics`);
+    }
+    async getAchievementStats(userId) {
+        return this.httpClient.request(`/users/${userId}/achievement-stats`);
+    }
+    async getAchievements(userId) {
+        return this.httpClient.request(`/users/${userId}/achievements`);
+    }
+    async getHomeCalendar(userId) {
+        return this.httpClient.request(`/users/${userId}/calendar/home`);
+    }
+    async getMuscleReadiness(userId) {
+        return this.httpClient.request(`/users/${userId}/muscle-readiness/current`);
+    }
+    async getProgramById(programId) {
+        return this.httpClient.request(`/programs/${programId}`);
+    }
+    async getTargetScores(userId) {
+        return this.httpClient.request(`/users/${userId}/target-scores`);
+    }
+    async getMetricScores(userId, startWeek) {
+        const url = startWeek
+            ? `/users/${userId}/metric-scores?startWeek=${startWeek}`
+            : `/users/${userId}/metric-scores`;
+        return this.httpClient.request(url);
+    }
 }
 
 class TonalClient {
@@ -276,9 +387,70 @@ class TonalClient {
     async getGoals() {
         return this.userService.getGoals();
     }
+    async getTrainingEffectGoals() {
+        return this.userService.getTrainingEffectGoals();
+    }
+    async getTrainingTypes() {
+        return this.userService.getTrainingTypes();
+    }
+    async getGoalMetrics() {
+        return this.userService.getGoalMetrics();
+    }
+    async getUserSettings() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getUserSettings(userInfo.id);
+    }
+    async getDailyMetrics(days = 60) {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getDailyMetrics(userInfo.id, days);
+    }
+    async getCurrentStreak() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getCurrentStreak(userInfo.id);
+    }
+    async getActivitySummaries() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getActivitySummaries(userInfo.id);
+    }
+    async getUserStatistics() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getUserStatistics(userInfo.id);
+    }
+    async getAchievementStats() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getAchievementStats(userInfo.id);
+    }
+    async getAchievements() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getAchievements(userInfo.id);
+    }
+    async getHomeCalendar() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getHomeCalendar(userInfo.id);
+    }
+    async getMuscleReadiness() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getMuscleReadiness(userInfo.id);
+    }
+    async getProgramById(programId) {
+        return this.userService.getProgramById(programId);
+    }
+    async getTargetScores() {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getTargetScores(userInfo.id);
+    }
+    async getMetricScores(startWeek) {
+        const userInfo = await this.getUserInfo();
+        return this.userService.getMetricScores(userInfo.id, startWeek);
+    }
     // Workout operations
     async getUserWorkouts(offset = 0, limit = 50) {
         return this.workoutService.getUserWorkouts(offset, limit);
+    }
+    async getDailyLifts(timeZone) {
+        // Get user info to populate device-specific headers
+        const userInfo = await this.getUserInfo();
+        return this.workoutService.getDailyLifts(userInfo, timeZone);
     }
     async getWorkoutById(workoutId) {
         return this.workoutService.getWorkoutById(workoutId);

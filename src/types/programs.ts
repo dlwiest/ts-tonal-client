@@ -12,7 +12,7 @@ export interface TonalProgramWorkout {
   duration: number // Workout duration in seconds
 }
 
-export interface TonalTrainingEffectGoal {
+export interface TonalProgramTrainingEffectGoal {
   goalID: string // Training effect goal ID
   score: number // Goal achievement score (0.0-1.0)
   goalMet: boolean // Whether the goal was achieved
@@ -45,5 +45,5 @@ export interface TonalProgram {
   supportedDevices: string[] // Compatible Tonal device types
   featureGroupIds: string[] | null // Feature group classifications
   excludeFromCoachHighlights: boolean // Whether excluded from coach highlights
-  trainingEffectGoals: TonalTrainingEffectGoal[] // Training effect goal achievements
+  trainingEffectGoals: TonalProgramTrainingEffectGoal[] // Training effect goal achievements
 }

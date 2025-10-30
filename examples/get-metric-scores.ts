@@ -119,7 +119,7 @@ const getMetricScores = async () => {
         exceededRange,
         achievementPercent: (latestScore.score / latestTarget.target) * 100
       }
-    }).filter(Boolean)
+    }).filter((item): item is NonNullable<typeof item> => item !== null)
 
     const totalMetrics = currentWeekAnalysis.length
     const metricsInRange = currentWeekAnalysis.filter(m => m.inRange).length
