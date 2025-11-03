@@ -14,7 +14,9 @@ class TonalClientError extends Error {
 class AuthManager {
     constructor(username, password) {
         this.idToken = '';
+        this.refreshToken = '';
         this.tokenExpiresAt = 0;
+        this.isRefreshing = false;
         this.authUrl = 'https://tonal.auth0.com/oauth/token';
         this.clientId = 'ERCyexW-xoVG_Yy3RDe-eV4xsOnRHP6L';
         this.username = username;
@@ -50,17 +52,69 @@ class AuthManager {
         }
         const tokenData = await response.json();
         this.idToken = tokenData.id_token;
+        this.refreshToken = tokenData.refresh_token;
         this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000);
         return this.idToken;
     }
-    getValidToken() {
-        if (!this.isTokenValid()) {
-            throw new TonalClientError('Token expired. Call authenticate() first.');
+    async getValidToken() {
+        if (this.isTokenValid()) {
+            return this.idToken;
         }
-        return this.idToken;
+        if (this.refreshToken) {
+            if (!this.isRefreshing) {
+                await this.refreshTokens();
+            }
+            else {
+                // Wait for ongoing refresh to complete
+                while (this.isRefreshing) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            if (this.isTokenValid()) {
+                return this.idToken;
+            }
+        }
+        throw new TonalClientError('Token expired and refresh failed. Call authenticate() first.');
     }
     isTokenValid() {
         return !!this.idToken && Date.now() < this.tokenExpiresAt - 60000; // 1 minute buffer
+    }
+    async refreshTokens() {
+        if (this.isRefreshing) {
+            return; // Prevent concurrent refresh attempts
+        }
+        this.isRefreshing = true;
+        try {
+            const response = await fetch(this.authUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    client_id: this.clientId,
+                    grant_type: 'refresh_token',
+                    refresh_token: this.refreshToken,
+                }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                }
+                catch {
+                    errorData = { error: errorText };
+                }
+                throw new TonalClientError(errorData.error_description || errorData.error || 'Token refresh failed', response.status, errorData);
+            }
+            const tokenData = await response.json();
+            this.idToken = tokenData.id_token;
+            this.refreshToken = tokenData.refresh_token;
+            this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000);
+        }
+        finally {
+            this.isRefreshing = false;
+        }
     }
 }
 
@@ -79,7 +133,7 @@ class HttpClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
         try {
-            const token = this.authManager.getValidToken();
+            const token = await this.authManager.getValidToken();
             const response = await fetch(url, {
                 ...options,
                 headers: {
@@ -127,6 +181,16 @@ class HttpClient {
             }
             catch (error) {
                 lastError = error instanceof TonalClientError ? error : new TonalClientError('Unknown error', undefined, error);
+                // If it's an auth error on first attempt, try to refresh token and retry once
+                if (attempt === 1 && lastError.statusCode && (lastError.statusCode === 401 || lastError.statusCode === 403)) {
+                    try {
+                        await this.authManager.getValidToken(); // This will refresh if needed
+                        continue; // Retry the request with the new token
+                    }
+                    catch (refreshError) {
+                        // If refresh fails, continue with normal retry logic
+                    }
+                }
                 if (attempt === this.maxRetries || (lastError.statusCode && lastError.statusCode < 500)) {
                     throw lastError;
                 }

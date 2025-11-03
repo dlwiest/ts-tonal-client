@@ -18,7 +18,7 @@ export class HttpClient {
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout)
 
     try {
-      const token = this.authManager.getValidToken()
+      const token = await this.authManager.getValidToken()
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -71,6 +71,16 @@ export class HttpClient {
         return await this.makeRequest<T>(url, options, expectsBody)
       } catch (error) {
         lastError = error instanceof TonalClientError ? error : new TonalClientError('Unknown error', undefined, error)
+
+        // If it's an auth error on first attempt, try to refresh token and retry once
+        if (attempt === 1 && lastError.statusCode && (lastError.statusCode === 401 || lastError.statusCode === 403)) {
+          try {
+            await this.authManager.getValidToken() // This will refresh if needed
+            continue // Retry the request with the new token
+          } catch (refreshError) {
+            // If refresh fails, continue with normal retry logic
+          }
+        }
 
         if (attempt === this.maxRetries || (lastError.statusCode && lastError.statusCode < 500)) {
           throw lastError
