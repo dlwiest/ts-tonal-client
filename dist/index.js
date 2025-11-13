@@ -2,6 +2,9 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+var fs = require('fs');
+var path = require('path');
+
 class TonalClientError extends Error {
     constructor(message, statusCode, originalError) {
         super(message);
@@ -327,12 +330,85 @@ class WorkoutService {
     }
 }
 
+class CacheManager {
+    constructor(cacheDir = '.cache', defaultTTL = 24 * 60 * 60 * 1000) {
+        this.cacheDir = cacheDir;
+        this.defaultTTL = defaultTTL;
+        this.ensureCacheDir();
+    }
+    ensureCacheDir() {
+        if (!fs.existsSync(this.cacheDir)) {
+            fs.mkdirSync(this.cacheDir, { recursive: true });
+        }
+    }
+    getCachePath(key) {
+        return path.join(this.cacheDir, `${key}.json`);
+    }
+    async get(key) {
+        const cachePath = this.getCachePath(key);
+        if (!fs.existsSync(cachePath)) {
+            return null;
+        }
+        try {
+            const content = fs.readFileSync(cachePath, 'utf-8');
+            const entry = JSON.parse(content);
+            const cachedAt = new Date(entry.cachedAt).getTime();
+            const now = Date.now();
+            const age = now - cachedAt;
+            if (age > entry.ttl) {
+                // Cache expired
+                return null;
+            }
+            return entry.data;
+        }
+        catch (error) {
+            // If there's an error reading/parsing cache, treat as cache miss
+            return null;
+        }
+    }
+    async set(key, data, ttl) {
+        const cachePath = this.getCachePath(key);
+        const entry = {
+            cachedAt: new Date().toISOString(),
+            ttl: ttl || this.defaultTTL,
+            data,
+        };
+        fs.writeFileSync(cachePath, JSON.stringify(entry, null, 2), 'utf-8');
+    }
+    async invalidate(key) {
+        const cachePath = this.getCachePath(key);
+        if (fs.existsSync(cachePath)) {
+            fs.unlinkSync(cachePath);
+        }
+    }
+    async clear() {
+        if (fs.existsSync(this.cacheDir)) {
+            const files = fs.readdirSync(this.cacheDir);
+            for (const file of files) {
+                fs.unlinkSync(path.join(this.cacheDir, file));
+            }
+        }
+    }
+}
+
 class MovementService {
     constructor(httpClient) {
         this.httpClient = httpClient;
+        this.cacheManager = new CacheManager();
     }
-    async getMovements() {
-        return this.httpClient.request('/movements');
+    async getMovements(useCache = true) {
+        if (useCache) {
+            const cached = await this.cacheManager.get('movements');
+            if (cached) {
+                return cached;
+            }
+        }
+        const movements = await this.httpClient.request('/movements');
+        await this.cacheManager.set('movements', movements);
+        return movements;
+    }
+    async invalidateMovementsCache() {
+        await this.cacheManager.invalidate('movements');
     }
 }
 
@@ -445,8 +521,11 @@ class TonalClient {
         return client;
     }
     // Movement operations
-    async getMovements() {
-        return this.movementService.getMovements();
+    async getMovements(useCache = true) {
+        return this.movementService.getMovements(useCache);
+    }
+    async invalidateMovementsCache() {
+        return this.movementService.invalidateMovementsCache();
     }
     // User operations
     async getUserInfo() {

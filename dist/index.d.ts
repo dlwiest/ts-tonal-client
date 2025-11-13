@@ -645,7 +645,8 @@ declare class TonalClient {
         username: string;
         password: string;
     }): Promise<TonalClient>;
-    getMovements(): Promise<TonalMovement[]>;
+    getMovements(useCache?: boolean): Promise<TonalMovement[]>;
+    invalidateMovementsCache(): Promise<void>;
     getUserInfo(): Promise<TonalUserInfo>;
     getGoals(): Promise<TonalGoal[]>;
     getTrainingEffectGoals(): Promise<TonalTrainingEffectGoalsResponse>;

@@ -53,8 +53,12 @@ export class TonalClient {
   }
 
   // Movement operations
-  async getMovements(): Promise<TonalMovement[]> {
-    return this.movementService.getMovements()
+  async getMovements(useCache: boolean = true): Promise<TonalMovement[]> {
+    return this.movementService.getMovements(useCache)
+  }
+
+  async invalidateMovementsCache(): Promise<void> {
+    return this.movementService.invalidateMovementsCache()
   }
 
   // User operations
