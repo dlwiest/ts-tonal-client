@@ -28,4 +28,12 @@ export interface TonalMovement {
   active: boolean
   featureGroupIds: null | string[]
   isGeneric: boolean
+  onMachineInfo?: {
+    accessory: string
+    resistanceType: string
+    spotterDisabled: boolean
+    eccentricDisabled: boolean
+    chainsDisabled: boolean
+    burnoutDisabled: boolean
+  }
 }

@@ -2,5 +2,5 @@
 /node_modules
 /dist
 movements.json
-.cache
-rollup.config-*.cjs
+tonal-health-export.json
+.cache/

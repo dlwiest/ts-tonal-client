@@ -52,7 +52,7 @@
     "example:program-by-id": "tsx examples/get-program-by-id.ts",
     "example:target-scores": "tsx examples/get-target-scores.ts",
     "example:metric-scores": "tsx examples/get-metric-scores.ts",
-    "example:workout-activity": "tsx examples/get-workout-activity.ts"
+    "example:health-export": "tsx examples/export-health-data.ts"
   },
   "repository": {
     "type": "git",
