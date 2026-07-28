@@ -1,5 +1,5 @@
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalWorkoutActivity, TonalClientError } from '../types'
 
 export class UserService {
   constructor(private httpClient: HttpClient) { }
@@ -75,6 +75,40 @@ export class UserService {
 
   async getActivitySummaries(userId: string): Promise<TonalActivitySummary[]> {
     return this.httpClient.request(`/users/${userId}/activity-summaries`)
+  }
+
+  async getWorkoutActivities(
+    userId: string,
+    offset: number = 0,
+    limit: number = 100
+  ): Promise<TonalWorkoutActivity[]> {
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new TonalClientError('Offset must be a non-negative integer')
+    }
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+      throw new TonalClientError('Limit must be an integer between 1 and 100')
+    }
+
+    return this.httpClient.request(`/users/${userId}/workout-activities`, {
+      method: 'GET',
+      headers: {
+        'pg-offset': offset.toString(),
+        'pg-limit': limit.toString(),
+      },
+    })
+  }
+
+  async getWorkoutActivityById(
+    userId: string,
+    activityId: string
+  ): Promise<TonalWorkoutActivity> {
+    if (!activityId?.trim()) {
+      throw new TonalClientError('Workout activity ID is required')
+    }
+
+    return this.httpClient.request(
+      `/users/${userId}/workout-activities/${encodeURIComponent(activityId)}`
+    )
   }
 
   async getUserStatistics(userId: string): Promise<TonalUserStatistics> {

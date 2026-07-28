@@ -73,6 +73,81 @@ export interface TonalWorkout {
   createdSource?: unknown | null // TODO: investigate how workouts are created/imported
 }
 
+/**
+ * A performed set returned as part of a completed workout activity.
+ *
+ * Tonal omits some values for alternating-side follow-ups, burnouts, drop sets,
+ * and duration-based movements, so performance fields are optional.
+ */
+export interface TonalWorkoutSetActivity {
+  id: string
+  movementId: string
+  prescribedReps?: number
+  prescribedDuration?: number
+  repetition: number
+  repetitionTotal: number
+  blockNumber: number
+  spotter: boolean
+  eccentric: boolean
+  chains: boolean
+  flex: boolean
+  warmUp: boolean
+  beginTime: string
+  endTime?: string
+  duration?: number
+  sideNumber: number
+  movementSide?: string
+  weightPercentage?: number
+  avgWeight?: number
+  baseWeight?: number
+  minWeight?: number
+  maxWeight?: number
+  suggestedWeight?: number
+  suggestedWeightChange?: number
+  volume?: number
+  totalVolume?: number
+  totalOnMachineVolume?: number
+  repCount?: number
+  repsInReserve?: number
+  oneRepMax?: number
+  rom?: number
+  romLengthIn?: number
+  resistanceLevel?: number
+  suggestedResistanceLevel?: number
+  concentricWork?: number
+  totalConcentricWork?: number
+  maxConPower?: number
+  velAtMaxConPower?: number
+  weightAtMaxConPower?: number
+  chainsWeight?: number
+  eccentricWeight?: number
+  romWeight?: number
+}
+
+/**
+ * Detailed completed workout data returned by
+ * GET /users/{userId}/workout-activities/{activityId}.
+ */
+export interface TonalWorkoutActivity {
+  id: string
+  userId: string
+  workoutId: string
+  workoutType: string
+  timezone: string
+  beginTime: string
+  endTime: string
+  totalDuration: number
+  activeDuration: number
+  restDuration: number
+  totalMovements: number
+  totalSets: number
+  totalReps: number
+  totalVolume: number
+  totalConcentricWork: number
+  percentCompleted: number
+  workoutSetActivity?: TonalWorkoutSetActivity[]
+}
+
 export interface TonalSharedWorkout {
   id: string
   sharerUserId: string

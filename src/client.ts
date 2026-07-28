@@ -29,7 +29,11 @@ import {
   TonalProgram,
   TonalTargetScoresResponse,
   TonalMetricScoresResponse,
+  TonalHealthExport,
+  TonalHealthExportOptions,
+  TonalWorkoutActivity,
 } from './types'
+import { buildHealthExport } from './utils/health-export'
 
 export class TonalClient {
   private authManager: AuthManager
@@ -102,6 +106,25 @@ export class TonalClient {
     return this.userService.getActivitySummaries(userInfo.id)
   }
 
+  /**
+   * Get a page of completed workout activities including performed set data.
+   */
+  async getWorkoutActivities(
+    offset: number = 0,
+    limit: number = 100
+  ): Promise<TonalWorkoutActivity[]> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getWorkoutActivities(userInfo.id, offset, limit)
+  }
+
+  /**
+   * Get one completed workout with performed set, rep, and weight details.
+   */
+  async getWorkoutActivityById(activityId: string): Promise<TonalWorkoutActivity> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getWorkoutActivityById(userInfo.id, activityId)
+  }
+
   async getUserStatistics(): Promise<TonalUserStatistics> {
     const userInfo = await this.getUserInfo()
     return this.userService.getUserStatistics(userInfo.id)
@@ -139,6 +162,87 @@ export class TonalClient {
   async getMetricScores(startWeek?: number): Promise<TonalMetricScoresResponse> {
     const userInfo = await this.getUserInfo()
     return this.userService.getMetricScores(userInfo.id, startWeek)
+  }
+
+  /**
+   * Create a compact export intended for health analysis and data portability.
+   *
+   * The export excludes profile, device, and authentication details. Activities
+   * can be filtered by date and limited, and optional readiness and lifetime
+   * statistics can be omitted when a smaller data set is preferred.
+   */
+  async getHealthExport(options: TonalHealthExportOptions = {}): Promise<TonalHealthExport> {
+    const includeMuscleReadiness = options.includeMuscleReadiness ?? true
+    const includeLifetimeStatistics = options.includeLifetimeStatistics ?? true
+
+    const [activities, muscleReadiness, lifetimeStatistics] = await Promise.all([
+      this.getActivitySummaries(),
+      includeMuscleReadiness ? this.getMuscleReadiness() : Promise.resolve(undefined),
+      includeLifetimeStatistics ? this.getUserStatistics() : Promise.resolve(undefined),
+    ])
+
+    const exportedAt = new Date()
+    const initialExport = buildHealthExport(
+      {
+        activities,
+        muscleReadiness,
+        lifetimeStatistics,
+      },
+      options,
+      exportedAt
+    )
+
+    if (!options.includeSetDetails || initialExport.activities.length === 0) {
+      return initialExport
+    }
+
+    const [activityDetails, movements] = await Promise.all([
+      this.getWorkoutActivityDetails(
+        initialExport.activities.map(activity => activity.activityId)
+      ),
+      this.getMovements(),
+    ])
+
+    return buildHealthExport(
+      {
+        activities,
+        muscleReadiness,
+        lifetimeStatistics,
+        activityDetails,
+        movements,
+      },
+      options,
+      exportedAt
+    )
+  }
+
+  private async getWorkoutActivityDetails(
+    activityIds: string[]
+  ): Promise<TonalWorkoutActivity[]> {
+    const pageSize = 100
+    const requestedIds = new Set(activityIds)
+    const details: TonalWorkoutActivity[] = []
+    const userInfo = await this.getUserInfo()
+
+    for (let offset = 0; requestedIds.size > 0; offset += pageSize) {
+      const page = await this.userService.getWorkoutActivities(
+        userInfo.id,
+        offset,
+        pageSize
+      )
+
+      for (const activity of page) {
+        if (requestedIds.delete(activity.id)) {
+          details.push(activity)
+        }
+      }
+
+      if (page.length < pageSize) {
+        break
+      }
+    }
+
+    return details
   }
 
   // Workout operations
