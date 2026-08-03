@@ -171,6 +171,9 @@ npm run example:metric-scores
 
 # Export workout summaries for personal health analysis
 npm run example:health-export
+
+# Export complete Tonal history and all available health metrics
+npm run example:complete-health-export
 ```
 
 ## Health Data Export
@@ -230,6 +233,29 @@ const activities = await client.getWorkoutActivities(0, 100)
 const activity = await client.getWorkoutActivityById('activity-uuid')
 console.log(activity.workoutSetActivity)
 ```
+
+### Complete History Export
+
+Run `npm run example:complete-health-export` to retrieve every paginated Tonal
+workout from the beginning of the account history. The resulting
+`tonal-complete-health-export.json` includes raw set-performance metrics,
+formatted workout and movement summaries, full daily metrics for the covered
+period, strength-score history, weekly targets and scores, current readiness,
+streaks, lifetime statistics, achievements, and reference definitions.
+
+The complete export is structured as JSON for analysis tools such as ChatGPT.
+It includes a data dictionary explaining units and Tonal's per-cable resistance
+convention. Account, device, application, subscription, and authentication
+identifiers are removed recursively. The JSON is compacted to reduce upload
+size and text-token usage without dropping data. The file still contains highly
+private health information and is created with owner-only permissions where
+supported.
+
+The script also creates a `tonal-chatgpt-export` directory containing
+`overview-and-metrics.json` and one `workouts-YYYY.json` file for each year in
+the history. Upload all files from that directory together. The split bundle
+contains the same information but keeps each text file smaller and easier for
+ChatGPT to analyze completely.
 
 ## API Reference
 

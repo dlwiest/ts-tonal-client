@@ -148,6 +148,73 @@ export interface TonalWorkoutActivity {
   workoutSetActivity?: TonalWorkoutSetActivity[]
 }
 
+export interface TonalFormattedWorkoutSet {
+  associatedSetActivityIds: string[]
+  avgMaxWeight: number
+  beginTime: string
+  burnout: boolean
+  dropSet: boolean
+  duration: number
+  endTime: string
+  maxConPower: number
+  offMachineModifiedWeight: number
+  oneRepMax: number
+  repCount: number
+  repGoal: number
+  repetition: number
+  repetitionTotal: number
+  spotterMode: string
+  suggestedWeightChange: number
+  totalVolume: number
+  totalWork: number
+  warmUp: boolean
+  weight: number
+  weightControlMode: number
+  weightPercentage: number
+}
+
+export interface TonalFormattedMovementSet {
+  assetId: string
+  blockNumber: number
+  description: string
+  genericMovement: unknown
+  movementId: string
+  movementName: string
+  offMachine: boolean
+  setGroup: number
+  sets: TonalFormattedWorkoutSet[]
+  totalOnMachineVolume: number
+  totalVolume: number
+  totalWork: number
+}
+
+export interface TonalFormattedWorkoutSummary {
+  id: string
+  workoutId: string
+  name: string
+  timestamp: string
+  UTCTimestamp: string
+  localTimestamp: string
+  endTime: string
+  timeZone: string
+  activityType: string
+  workoutType: string
+  targetArea: string
+  level: string
+  completed: boolean
+  duration: number
+  timeUnderTension: number
+  totalReps: number
+  totalVolume: number
+  totalWork: number
+  calories?: Array<{
+    algorithm: string
+    caloriesBurned: number
+  }>
+  movementSets: TonalFormattedMovementSet[]
+  [key: string]: unknown
+}
+
 export interface TonalSharedWorkout {
   id: string
   sharerUserId: string

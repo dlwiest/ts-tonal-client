@@ -3,4 +3,6 @@
 /dist
 movements.json
 tonal-health-export.json
+tonal-complete-health-export.json
+tonal-chatgpt-export/
 .cache/

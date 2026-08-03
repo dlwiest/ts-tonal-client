@@ -49,4 +49,30 @@ describe('UserService workout activities', () => {
     )
     expect(request).not.toHaveBeenCalled()
   })
+
+  it('requests a formatted workout summary', async () => {
+    request.mockResolvedValue({})
+
+    await service.getFormattedWorkoutSummary('user-1', 'activity/id')
+
+    expect(request).toHaveBeenCalledWith(
+      '/formatted/users/user-1/workout-summaries/activity%2Fid'
+    )
+  })
+
+  it('requests current and historical strength scores', async () => {
+    request.mockResolvedValue([])
+
+    await service.getCurrentStrengthScores('user-1')
+    await service.getStrengthScoreHistory('user-1', 500)
+
+    expect(request).toHaveBeenNthCalledWith(
+      1,
+      '/users/user-1/strength-scores/current'
+    )
+    expect(request).toHaveBeenNthCalledWith(
+      2,
+      '/users/user-1/strength-scores/history?limit=500'
+    )
+  })
 })

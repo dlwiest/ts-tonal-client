@@ -1,5 +1,5 @@
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalWorkoutActivity, TonalClientError } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalWorkoutActivity, TonalFormattedWorkoutSummary, TonalCurrentStrengthScore, TonalStrengthScoreHistory, TonalClientError } from '../types'
 
 export class UserService {
   constructor(private httpClient: HttpClient) { }
@@ -108,6 +108,36 @@ export class UserService {
 
     return this.httpClient.request(
       `/users/${userId}/workout-activities/${encodeURIComponent(activityId)}`
+    )
+  }
+
+  async getFormattedWorkoutSummary(
+    userId: string,
+    activityId: string
+  ): Promise<TonalFormattedWorkoutSummary> {
+    if (!activityId?.trim()) {
+      throw new TonalClientError('Workout activity ID is required')
+    }
+
+    return this.httpClient.request(
+      `/formatted/users/${userId}/workout-summaries/${encodeURIComponent(activityId)}`
+    )
+  }
+
+  async getCurrentStrengthScores(userId: string): Promise<TonalCurrentStrengthScore[]> {
+    return this.httpClient.request(`/users/${userId}/strength-scores/current`)
+  }
+
+  async getStrengthScoreHistory(
+    userId: string,
+    limit: number = 1000
+  ): Promise<TonalStrengthScoreHistory[]> {
+    if (!Number.isInteger(limit) || limit <= 0) {
+      throw new TonalClientError('Strength score history limit must be a positive integer')
+    }
+
+    return this.httpClient.request(
+      `/users/${userId}/strength-scores/history?limit=${limit}`
     )
   }
 
