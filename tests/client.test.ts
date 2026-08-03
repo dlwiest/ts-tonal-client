@@ -23,6 +23,39 @@ function workoutActivity(id: string): TonalWorkoutActivity {
 }
 
 describe('TonalClient health export activity details', () => {
+  it('retrieves complete workout history using pagination', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) =>
+      workoutActivity(`activity-${index}`)
+    )
+    const secondPage = [workoutActivity('activity-100')]
+    const getWorkoutActivities = jest
+      .fn()
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage)
+    const client = Object.create(TonalClient.prototype) as TonalClient
+
+    Object.assign(client as object, {
+      userService: { getWorkoutActivities },
+      getUserInfo: jest.fn().mockResolvedValue({ id: 'user-1' }),
+    })
+
+    const activities = await client.getAllWorkoutActivities()
+
+    expect(activities).toHaveLength(101)
+    expect(getWorkoutActivities).toHaveBeenNthCalledWith(
+      1,
+      'user-1',
+      0,
+      100
+    )
+    expect(getWorkoutActivities).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      100,
+      100
+    )
+  })
+
   it('finds requested details in paginated workout activity data', async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) =>
       workoutActivity(`activity-${index}`)
