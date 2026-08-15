@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 
 interface CacheEntry<T> {
@@ -11,10 +12,14 @@ export class CacheManager {
   private cacheDir: string
   private defaultTTL: number
 
-  constructor(cacheDir: string = '.cache', defaultTTL: number = 24 * 60 * 60 * 1000) {
+  constructor(
+    cacheDir: string = process.env.XDG_CACHE_HOME
+      ? path.join(process.env.XDG_CACHE_HOME, 'ts-tonal-client')
+      : path.join(os.homedir(), '.cache', 'ts-tonal-client'),
+    defaultTTL: number = 24 * 60 * 60 * 1000
+  ) {
     this.cacheDir = cacheDir
     this.defaultTTL = defaultTTL
-    this.ensureCacheDir()
   }
 
   private ensureCacheDir(): void {
@@ -42,8 +47,7 @@ export class CacheManager {
       const now = Date.now()
       const age = now - cachedAt
 
-      if (age > entry.ttl) {
-        // Cache expired
+      if (!Number.isFinite(cachedAt) || typeof entry.ttl !== 'number' || age > entry.ttl) {
         return null
       }
 
@@ -56,13 +60,16 @@ export class CacheManager {
 
   async set<T>(key: string, data: T, ttl?: number): Promise<void> {
     const cachePath = this.getCachePath(key)
+    this.ensureCacheDir()
     const entry: CacheEntry<T> = {
       cachedAt: new Date().toISOString(),
       ttl: ttl || this.defaultTTL,
       data,
     }
 
-    fs.writeFileSync(cachePath, JSON.stringify(entry, null, 2), 'utf-8')
+    const tempPath = `${cachePath}.tmp`
+    fs.writeFileSync(tempPath, JSON.stringify(entry, null, 2), 'utf-8')
+    fs.renameSync(tempPath, cachePath)
   }
 
   async invalidate(key: string): Promise<void> {
@@ -74,7 +81,9 @@ export class CacheManager {
 
   async clear(): Promise<void> {
     if (fs.existsSync(this.cacheDir)) {
-      const files = fs.readdirSync(this.cacheDir)
+      const files = fs.readdirSync(this.cacheDir).filter(
+        file => file.endsWith('.json') || file.endsWith('.json.tmp')
+      )
       for (const file of files) {
         fs.unlinkSync(path.join(this.cacheDir, file))
       }

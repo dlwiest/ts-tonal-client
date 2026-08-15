@@ -5,8 +5,8 @@ import { CacheManager } from '../utils/cache-manager'
 export class MovementService {
   private cacheManager: CacheManager
 
-  constructor(private httpClient: HttpClient) {
-    this.cacheManager = new CacheManager()
+  constructor(private httpClient: HttpClient, cacheDir?: string) {
+    this.cacheManager = new CacheManager(cacheDir)
   }
 
   async getMovements(useCache: boolean = true): Promise<TonalMovement[]> {
@@ -18,7 +18,11 @@ export class MovementService {
     }
 
     const movements = await this.httpClient.request<TonalMovement[]>('/movements')
-    await this.cacheManager.set('movements', movements)
+    try {
+      await this.cacheManager.set('movements', movements)
+    } catch {
+      // Cache writes are best-effort and must not hide a successful API response.
+    }
     return movements
   }
 

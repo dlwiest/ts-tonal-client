@@ -7,7 +7,8 @@ export interface WorkoutSet {
   workoutId: string
   blockStart: boolean
   movementId: string
-  prescribedReps: number
+  prescribedReps?: number
+  prescribedDuration?: number
   repetition: number
   repetitionTotal: number
   blockNumber: number
@@ -41,7 +42,7 @@ export interface TonalWorkout {
   productionCode: string
   assetId: string
   coachId: string
-  sets: WorkoutSet[]
+  sets: WorkoutSet[] | null
   duration: number
   publishState: WorkoutPublishState
   programId: string | null
@@ -49,7 +50,7 @@ export interface TonalWorkout {
   groupIds: string[]
   targetArea: string
   tags: string[] | null
-  bodyRegions: MuscleGroup[]
+  bodyRegions: MuscleGroup[] | null
   goalIds: string[] | null
   trainingEffectGoals: string[]
   disableModification: boolean
@@ -65,7 +66,7 @@ export interface TonalWorkout {
   recoveryWeight: boolean
   supportedDevices: string[] | null
   featureGroupIds: string[] | null
-  movementIds: string[]
+  movementIds: string[] | null
   accessories?: string[] // Required accessories for the workout (e.g. "Bench", "Handles")
   muscleGroupsForExclusion: MuscleGroup[] | null
   playbackType: string
@@ -119,6 +120,7 @@ export interface TonalWorkoutCreateRequest {
 export interface TonalWorkoutUpdateRequest {
   id: string
   title: string
+  shortDescription?: string
   description?: string
   coachId: string
   sets: TonalWorkoutEstimateSet[]

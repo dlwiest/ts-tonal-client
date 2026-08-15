@@ -14,11 +14,12 @@ export class HttpClient {
   }
 
   private async makeRequest<T>(url: string, options: RequestInit = {}, expectsBody: boolean = true): Promise<T> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout)
+    let timeoutId: NodeJS.Timeout | undefined
 
     try {
       const token = await this.authManager.getValidToken()
+      const controller = new AbortController()
+      timeoutId = setTimeout(() => controller.abort(), this.requestTimeout)
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -30,6 +31,7 @@ export class HttpClient {
       })
 
       clearTimeout(timeoutId)
+      timeoutId = undefined
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -59,12 +61,17 @@ export class HttpClient {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new TonalClientError('Request timeout', undefined, error)
       }
-      throw new TonalClientError('Request failed', undefined, error)
+      throw new TonalClientError(
+        error instanceof Error ? error.message : 'Request failed',
+        undefined,
+        error
+      )
     }
   }
 
   private async makeRequestWithRetry<T>(url: string, options: RequestInit = {}, expectsBody: boolean = true): Promise<T> {
     let lastError: TonalClientError
+    const canRetry = (options.method ?? 'GET').toUpperCase() === 'GET'
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -72,17 +79,25 @@ export class HttpClient {
       } catch (error) {
         lastError = error instanceof TonalClientError ? error : new TonalClientError('Unknown error', undefined, error)
 
-        // If it's an auth error on first attempt, try to refresh token and retry once
-        if (attempt === 1 && lastError.statusCode && (lastError.statusCode === 401 || lastError.statusCode === 403)) {
+        // If it's an auth error on first attempt, invalidate the token and retry once
+        if (attempt === 1 && (lastError.statusCode === 401 || lastError.statusCode === 403)) {
           try {
-            await this.authManager.getValidToken() // This will refresh if needed
-            continue // Retry the request with the new token
-          } catch (refreshError) {
+            this.authManager.invalidateToken()
+            await this.authManager.getValidToken()
+            continue
+          } catch {
             // If refresh fails, continue with normal retry logic
           }
         }
 
-        if (attempt === this.maxRetries || (lastError.statusCode && lastError.statusCode < 500)) {
+        const isAbort = lastError.originalError instanceof Error &&
+          lastError.originalError.name === 'AbortError'
+        if (
+          attempt === this.maxRetries ||
+          !canRetry ||
+          (lastError.statusCode !== undefined && lastError.statusCode < 500) ||
+          (lastError.statusCode === undefined && !isAbort)
+        ) {
           throw lastError
         }
 

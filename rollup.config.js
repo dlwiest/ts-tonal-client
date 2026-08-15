@@ -6,7 +6,7 @@ const config = [
     input: 'src/index.ts',
     output: [
       {
-        file: 'dist/index.js',
+        file: 'dist/index.cjs',
         format: 'cjs',
         exports: 'named',
       },
@@ -16,7 +16,7 @@ const config = [
         exports: 'named',
       },
     ],
-    plugins: [typescript()],
+    plugins: [typescript({ tsconfig: './tsconfig.build.json' })],
   },
   {
     input: './src/index.ts',

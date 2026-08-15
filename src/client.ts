@@ -37,17 +37,19 @@ export class TonalClient {
   private workoutService: WorkoutService
   private movementService: MovementService
   private userService: UserService
+  private userInfo?: TonalUserInfo
+  private userInfoPromise?: Promise<TonalUserInfo>
 
-  private constructor(username: string, password: string) {
+  private constructor(username: string, password: string, cacheDir?: string) {
     this.authManager = new AuthManager(username, password)
     this.httpClient = new HttpClient(this.authManager)
     this.workoutService = new WorkoutService(this.httpClient)
-    this.movementService = new MovementService(this.httpClient)
+    this.movementService = new MovementService(this.httpClient, cacheDir)
     this.userService = new UserService(this.httpClient)
   }
 
-  static async create(credentials: { username: string; password: string }): Promise<TonalClient> {
-    const client = new TonalClient(credentials.username, credentials.password)
+  static async create(credentials: { username: string; password: string; cacheDir?: string }): Promise<TonalClient> {
+    const client = new TonalClient(credentials.username, credentials.password, credentials.cacheDir)
     await client.authManager.authenticate()
     return client
   }
@@ -63,7 +65,34 @@ export class TonalClient {
 
   // User operations
   async getUserInfo(): Promise<TonalUserInfo> {
-    return this.userService.getUserInfo()
+    if (this.userInfo) {
+      return this.userInfo
+    }
+
+    let request = this.userInfoPromise
+    if (!request) {
+      request = this.userService.getUserInfo()
+      this.userInfoPromise = request
+    }
+
+    try {
+      const userInfo = await request
+      if (this.userInfoPromise === request) {
+        this.userInfo = userInfo
+        this.userInfoPromise = undefined
+      }
+      return userInfo
+    } catch (error) {
+      if (this.userInfoPromise === request) {
+        this.userInfoPromise = undefined
+      }
+      throw error
+    }
+  }
+
+  invalidateUserInfo(): void {
+    this.userInfo = undefined
+    this.userInfoPromise = undefined
   }
 
   async getGoals(): Promise<TonalGoal[]> {

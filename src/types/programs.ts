@@ -42,7 +42,7 @@ export interface TonalProgram {
   programWorkouts: TonalProgramWorkout[] // Program-specific workout mappings
   nonComparableWorkouts: boolean // Whether workouts can be compared
   mobileFriendly: boolean // Mobile device compatibility
-  supportedDevices: string[] // Compatible Tonal device types
+  supportedDevices: string[] | null // Compatible Tonal device types
   featureGroupIds: string[] | null // Feature group classifications
   excludeFromCoachHighlights: boolean // Whether excluded from coach highlights
   trainingEffectGoals: TonalProgramTrainingEffectGoal[] // Training effect goal achievements

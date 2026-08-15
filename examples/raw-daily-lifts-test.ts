@@ -15,7 +15,7 @@ const testRawDailyLifts = async () => {
     const response = await fetch('https://api.tonal.com/v6/user-workouts?types=DailyLift', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${(client as any).authManager.getValidToken()}`,
+        'Authorization': `Bearer ${await (client as any).authManager.getValidToken()}`,
         'Accept': '*/*',
         'Content-Type': 'application/json',
         'User-Agent': 'Tonal/3004226 CFNetwork/3860.100.1 Darwin/25.0.0',

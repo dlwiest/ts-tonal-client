@@ -69,7 +69,7 @@ const createAndEditWorkout = async () => {
     console.log(`✅ Created workout: "${createdWorkout.title}"`)
     console.log(`   ID: ${createdWorkout.id}`)
     console.log(`   Duration: ${Math.floor(createdWorkout.duration / 60)}min ${createdWorkout.duration % 60}s`)
-    console.log(`   Sets: ${createdWorkout.sets.length}`)
+    console.log(`   Sets: ${createdWorkout.sets?.length || 0}`)
     
     // Step 2: Edit the workout
     console.log('\n✏️ Step 2: Editing the workout...')
@@ -158,6 +158,7 @@ const createAndEditWorkout = async () => {
     const updateData: TonalWorkoutUpdateRequest = {
       id: createdWorkout.id,
       title: `${createdWorkout.title} - EDITED`,
+      shortDescription: createdWorkout.shortDescription,
       description: `${createdWorkout.description}\n\n--- EDIT HISTORY ---\nEdited on ${new Date().toISOString()}\n• Increased reps from 15 to 25\n• Added third round with burnout\n• Added spotter and eccentric modifiers\n• Added new time-based exercise block (45s)`,
       coachId: createdWorkout.coachId,
       sets: modifiedSets,
@@ -171,7 +172,7 @@ const createAndEditWorkout = async () => {
     console.log(`✅ Workout edited successfully!`)
     console.log(`   New title: "${updatedWorkout.title}"`)
     console.log(`   New duration: ${Math.floor(updatedWorkout.duration / 60)}min ${updatedWorkout.duration % 60}s`)
-    console.log(`   New sets count: ${updatedWorkout.sets.length}`)
+    console.log(`   New sets count: ${updatedWorkout.sets?.length || 0}`)
     console.log(`   Body regions: ${updatedWorkout.bodyRegions?.join(', ') || 'None'}`)
     console.log(`   Accessories: ${updatedWorkout.accessories?.join(', ') || 'None'}`)
     
@@ -181,11 +182,11 @@ const createAndEditWorkout = async () => {
     console.log(`✅ Verification successful!`)
     console.log(`   Confirmed title: "${fetchedWorkout.title}"`)
     console.log(`   Confirmed duration: ${Math.floor(fetchedWorkout.duration / 60)}min ${fetchedWorkout.duration % 60}s`)
-    console.log(`   Confirmed sets: ${fetchedWorkout.sets.length}`)
+    console.log(`   Confirmed sets: ${fetchedWorkout.sets?.length || 0}`)
     
     // Show the differences
     console.log('\n📊 Summary of changes:')
-    console.log(`   Sets: ${createdWorkout.sets.length} → ${fetchedWorkout.sets.length}`)
+    console.log(`   Sets: ${createdWorkout.sets?.length || 0} → ${fetchedWorkout.sets?.length || 0}`)
     console.log(`   Duration: ${Math.floor(createdWorkout.duration / 60)}min ${createdWorkout.duration % 60}s → ${Math.floor(fetchedWorkout.duration / 60)}min ${fetchedWorkout.duration % 60}s`)
     console.log(`   Title: "${createdWorkout.title}" → "${fetchedWorkout.title}"`)
     

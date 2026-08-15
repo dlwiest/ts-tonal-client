@@ -491,7 +491,7 @@ export interface TonalUserInfo {
   isGuestAccount: boolean
   isDemoAccount: boolean
   watchedSafetyVideo: boolean
-  recentMobileDevice: TonalUserDevice
+  recentMobileDevice: TonalUserDevice | null
   emailVerified: boolean
   username: string
   workoutsPerWeek: number

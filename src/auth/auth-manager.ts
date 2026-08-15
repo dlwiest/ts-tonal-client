@@ -6,9 +6,11 @@ export class AuthManager {
   private idToken: string = ''
   private refreshToken: string = ''
   private tokenExpiresAt: number = 0
-  private isRefreshing: boolean = false
+  private authPromise: Promise<string> | null = null
+  private refreshPromise: Promise<void> | null = null
   private readonly authUrl = 'https://tonal.auth0.com/oauth/token'
   private readonly clientId = 'ERCyexW-xoVG_Yy3RDe-eV4xsOnRHP6L'
+  private readonly authTimeout = 30000
 
   constructor(username: string, password: string) {
     this.username = username
@@ -20,6 +22,19 @@ export class AuthManager {
       return this.idToken
     }
 
+    const activeAuth = this.authPromise ?? this.authenticateWithPassword()
+    this.authPromise = activeAuth
+
+    try {
+      return await activeAuth
+    } finally {
+      if (this.authPromise === activeAuth) {
+        this.authPromise = null
+      }
+    }
+  }
+
+  private async authenticateWithPassword(): Promise<string> {
     const response = await fetch(this.authUrl, {
       method: 'POST',
       headers: {
@@ -32,6 +47,7 @@ export class AuthManager {
         grant_type: 'password',
         scope: 'offline_access',
       }),
+      signal: AbortSignal.timeout(this.authTimeout),
     })
 
     if (!response.ok) {
@@ -51,10 +67,14 @@ export class AuthManager {
 
     const tokenData: OAuthTokenResponse = await response.json()
     this.idToken = tokenData.id_token
-    this.refreshToken = tokenData.refresh_token
+    this.refreshToken = tokenData.refresh_token ?? ''
     this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000)
 
     return this.idToken
+  }
+
+  invalidateToken(): void {
+    this.tokenExpiresAt = 0
   }
 
   async getValidToken(): Promise<string> {
@@ -62,22 +82,28 @@ export class AuthManager {
       return this.idToken
     }
 
-    if (this.refreshToken) {
-      if (!this.isRefreshing) {
-        await this.refreshTokens()
-      } else {
-        // Wait for ongoing refresh to complete
-        while (this.isRefreshing) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-        }
-      }
-      
-      if (this.isTokenValid()) {
-        return this.idToken
+    if (!this.refreshToken) {
+      return this.authenticate()
+    }
+
+    const activeRefresh = this.refreshPromise ?? this.refreshTokens()
+    this.refreshPromise = activeRefresh
+
+    try {
+      await activeRefresh
+    } catch {
+      return this.authenticate()
+    } finally {
+      if (this.refreshPromise === activeRefresh) {
+        this.refreshPromise = null
       }
     }
 
-    throw new TonalClientError('Token expired and refresh failed. Call authenticate() first.')
+    if (this.isTokenValid()) {
+      return this.idToken
+    }
+
+    return this.authenticate()
   }
 
   private isTokenValid(): boolean {
@@ -85,46 +111,37 @@ export class AuthManager {
   }
 
   private async refreshTokens(): Promise<void> {
-    if (this.isRefreshing) {
-      return // Prevent concurrent refresh attempts
-    }
+    const response = await fetch(this.authUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: this.clientId,
+        grant_type: 'refresh_token',
+        refresh_token: this.refreshToken,
+      }),
+      signal: AbortSignal.timeout(this.authTimeout),
+    })
 
-    this.isRefreshing = true
-
-    try {
-      const response = await fetch(this.authUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: this.clientId,
-          grant_type: 'refresh_token',
-          refresh_token: this.refreshToken,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        let errorData
-        try {
-          errorData = JSON.parse(errorText)
-        } catch {
-          errorData = { error: errorText }
-        }
-        throw new TonalClientError(
-          errorData.error_description || errorData.error || 'Token refresh failed',
-          response.status,
-          errorData
-        )
+    if (!response.ok) {
+      const errorText = await response.text()
+      let errorData
+      try {
+        errorData = JSON.parse(errorText)
+      } catch {
+        errorData = { error: errorText }
       }
-
-      const tokenData: OAuthTokenResponse = await response.json()
-      this.idToken = tokenData.id_token
-      this.refreshToken = tokenData.refresh_token
-      this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000)
-    } finally {
-      this.isRefreshing = false
+      throw new TonalClientError(
+        errorData.error_description || errorData.error || 'Token refresh failed',
+        response.status,
+        errorData
+      )
     }
+
+    const tokenData: OAuthTokenResponse = await response.json()
+    this.idToken = tokenData.id_token
+    this.refreshToken = tokenData.refresh_token ?? this.refreshToken
+    this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000)
   }
 }

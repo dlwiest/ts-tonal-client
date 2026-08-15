@@ -25,6 +25,9 @@ export class WorkoutService {
 
   async getDailyLifts(userInfo: TonalUserInfo, timeZone?: string): Promise<TonalWorkout[]> {
     const device = userInfo.recentMobileDevice
+    if (!device) {
+      throw new TonalClientError('Recent mobile device information is unavailable; daily lifts require a mobile device')
+    }
     const userAgent = device.platform === 'ios' 
       ? `Tonal/3004226 CFNetwork/3860.100.1 Darwin/${device.osVersion}`
       : `Tonal/${device.appVersion}`
@@ -65,8 +68,8 @@ export class WorkoutService {
       throw new TonalClientError('Share URL is required')
     }
 
-    const urlPattern = /https:\/\/share\.tonal\.com\/workout\/([a-f0-9-]+)/
-    const match = shareUrl.match(urlPattern)
+    const urlPattern = /^https:\/\/share\.tonal\.com\/workout\/([a-fA-F0-9-]+)(?:[?#]\S*)?$/
+    const match = shareUrl.trim().match(urlPattern)
 
     if (!match) {
       throw new TonalClientError('Invalid share URL format. Expected: https://share.tonal.com/workout/{id}')
@@ -120,9 +123,16 @@ export class WorkoutService {
       throw new TonalClientError('At least one set is required')
     }
 
+    // Tonal's PUT behavior is unverified. Omitting an absent shortDescription is equivalent
+    // under full-replace semantics and avoids an unintended clear under merge semantics;
+    // an explicit empty string intentionally clears it. `!= null` also covers null, which
+    // sibling response fields are known to return despite their non-optional types.
     const requestBody = {
       id: workoutData.id,
       title: workoutData.title,
+      ...(workoutData.shortDescription != null
+        ? { shortDescription: workoutData.shortDescription }
+        : {}),
       description: workoutData.description || '',
       coachId: workoutData.coachId || '00000000-0000-0000-0000-000000000000',
       sets: workoutData.sets,

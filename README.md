@@ -52,6 +52,34 @@ const workouts = await client.getUserWorkouts()
 console.log(`You have ${workouts.length} workouts`)
 ```
 
+### Client setup
+
+`TonalClient.create()` accepts credentials and an optional movement cache directory:
+
+```typescript
+TonalClient.create(credentials: {
+  username: string,
+  password: string,
+  cacheDir?: string,
+}): Promise<TonalClient>
+```
+
+Without `cacheDir`, movement data is cached in `$XDG_CACHE_HOME/ts-tonal-client` when `XDG_CACHE_HOME` is set. Otherwise, the cache lives at `~/.cache/ts-tonal-client`. The directory is created on the first successful cache write, not when the client is created.
+
+Pass `cacheDir` to store the movement cache somewhere else:
+
+```typescript
+const client = await TonalClient.create({
+  username: 'your_email@example.com',
+  password: 'your_password',
+  cacheDir: '/path/to/cache',
+})
+```
+
+### Cache invalidation
+
+`TonalClient.invalidateUserInfo(): void` clears the cached user profile. Call `client.invalidateUserInfo()` before the next `getUserInfo()` request to fetch fresh data.
+
 ## Examples
 
 To run the example scripts, first create a `.env` file:
