@@ -31,6 +31,15 @@ describe('WorkoutService', () => {
     service = new WorkoutService({ request } as unknown as HttpClient)
   })
 
+  it('sends the raw sets array when estimating workout duration', async () => {
+    await service.estimateWorkoutDuration([workoutSet])
+
+    expect(request).toHaveBeenCalledWith('/user-workouts/estimate', {
+      method: 'POST',
+      body: JSON.stringify([workoutSet]),
+    })
+  })
+
   it('sends the exact create workout body', async () => {
     await service.createWorkout({
       title: 'Timed workout',

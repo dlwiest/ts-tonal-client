@@ -86,7 +86,7 @@ export class WorkoutService {
 
     return this.httpClient.request('/user-workouts/estimate', {
       method: 'POST',
-      body: JSON.stringify({ sets }),
+      body: JSON.stringify(sets),
     })
   }
 
