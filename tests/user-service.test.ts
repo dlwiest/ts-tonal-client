@@ -9,13 +9,13 @@ import {
 
 const overallStrengthScore: TonalStrengthScore = {
   id: 'score-overall',
-  createdAt: '2026-02-24T12:00:00.000Z',
+  createdAt: '2024-03-01T12:00:00.000Z',
   updatedAt: '0001-01-01T00:00:00Z',
   userId: 'user-1',
   workoutActivityId: '00000000-0000-0000-0000-000000000000',
   strengthBodyRegion: 'Overall',
   bodyRegionDisplay: '',
-  score: 1292,
+  score: 900,
   current: true,
 }
 
@@ -23,11 +23,11 @@ const historyEntry = (id: number): TonalStrengthScoreHistoryEntry => ({
   id: `score-${id}`,
   userId: 'user-1',
   workoutActivityId: `activity-${id}`,
-  upper: 1693,
-  lower: 821,
-  core: 1363,
-  overall: 1292,
-  activityTime: '2026-02-24T12:00:00.000Z',
+  upper: 1000,
+  lower: 800,
+  core: 900,
+  overall: 900,
+  activityTime: '2024-03-01T12:00:00.000Z',
 })
 
 function createClient(request: jest.Mock): TonalClient {
@@ -141,7 +141,7 @@ describe('TonalClient strength scores', () => {
       .fn()
       .mockResolvedValueOnce({
         id: 'user-1',
-        createdAt: '2023-04-27T15:46:21.205+0000',
+        createdAt: '2024-01-01T00:00:00.000+0000',
       })
       .mockResolvedValueOnce([])
     const client = createClient(request)
@@ -151,7 +151,7 @@ describe('TonalClient strength scores', () => {
     expect(request).toHaveBeenNthCalledWith(1, '/users/userinfo')
     expect(request).toHaveBeenNthCalledWith(
       2,
-      '/users/user-1/strength-scores/history?limit=1218'
+      '/users/user-1/strength-scores/history?limit=970'
     )
   })
 

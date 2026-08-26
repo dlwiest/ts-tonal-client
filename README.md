@@ -457,7 +457,7 @@ for (const score of scores) {
   const label = score.bodyRegionDisplay || score.strengthBodyRegion
   console.log(`${label}: ${score.score}`)
 }
-// Upper Body: 1693 / Core: 1363 / Lower Body: 821 / Overall: 1292
+// One row per region: Upper Body, Core, Lower Body, Overall
 
 // Per-workout history. Defaults to the whole account.
 const history = await client.getStrengthScoreHistory()
