@@ -29,6 +29,10 @@ import {
   TonalProgram,
   TonalTargetScoresResponse,
   TonalMetricScoresResponse,
+  TonalStrengthScore,
+  TonalStrengthScoreHistoryEntry,
+  TonalStrengthScoreHistoryLookback,
+  TonalClientError,
 } from './types'
 
 export class TonalClient {
@@ -124,6 +128,40 @@ export class TonalClient {
   async getCurrentStreak(): Promise<TonalCurrentStreak> {
     const userInfo = await this.getUserInfo()
     return this.userService.getCurrentStreak(userInfo.id)
+  }
+
+  async getCurrentStrengthScores(): Promise<TonalStrengthScore[]> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getCurrentStrengthScores(userInfo.id)
+  }
+
+  async getStrengthScoreHistory(
+    days: TonalStrengthScoreHistoryLookback = 'all'
+  ): Promise<TonalStrengthScoreHistoryEntry[]> {
+    if (days !== 'all' && (!Number.isSafeInteger(days) || days <= 0)) {
+      throw new TonalClientError('Strength score history days must be a positive safe integer')
+    }
+
+    const userInfo = await this.getUserInfo()
+    let lookbackDays: number
+
+    if (days === 'all') {
+      const createdAt = userInfo.createdAt
+      const createdAtMs = typeof createdAt === 'string' ? Date.parse(createdAt) : Number.NaN
+      const now = Date.now()
+
+      if (!Number.isFinite(createdAtMs) || createdAtMs > now) {
+        throw new TonalClientError(
+          'Cannot derive all strength score history from user createdAt; pass explicit days'
+        )
+      }
+
+      lookbackDays = Math.max(1, Math.ceil((now - createdAtMs) / 86_400_000) + 2)
+    } else {
+      lookbackDays = days
+    }
+
+    return this.userService.getStrengthScoreHistory(userInfo.id, lookbackDays)
   }
 
   async getActivitySummaries(): Promise<TonalActivitySummary[]> {
