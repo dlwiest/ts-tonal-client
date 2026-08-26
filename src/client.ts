@@ -156,6 +156,10 @@ export class TonalClient {
         )
       }
 
+      // +2 covers the account-creation calendar day and the server's midnight-boundary
+      // ambiguity; over-fetching before account creation is harmless. The Math.max floor is
+      // belt-and-braces only -- the future-createdAt rejection above already guarantees a
+      // non-negative difference, so this expression is always >= 2.
       lookbackDays = Math.max(1, Math.ceil((now - createdAtMs) / 86_400_000) + 2)
     } else {
       lookbackDays = days

@@ -69,12 +69,19 @@ describe('UserService strength scores', () => {
     expect(result).toHaveLength(5)
   })
 
-  it('returns an empty strength score history array as-is', async () => {
+  it('returns an empty array for a window shorter than the gap since the last activity', async () => {
+    // Real behavior: `limit` is a day window, so a small value on a dormant account returns
+    // [] rather than an error. Measured live: limit=100 -> 0 rows, limit=200 -> 9 rows.
+    // The URL assertion is what makes this a real guard; an identity check alone would pass
+    // even if the endpoint were wrong or the response were sliced.
     const response: TonalStrengthScoreHistoryEntry[] = []
     request.mockResolvedValue(response)
 
     const result = await service.getStrengthScoreHistory('user-1', 100)
 
+    expect(request).toHaveBeenCalledWith(
+      '/users/user-1/strength-scores/history?limit=100'
+    )
     expect(result).toBe(response)
   })
 
@@ -92,6 +99,22 @@ describe('UserService strength scores', () => {
 describe('TonalClient strength scores', () => {
   afterEach(() => {
     jest.useRealTimers()
+  })
+
+  it('resolves user info once and delegates current scores with the resolved id', async () => {
+    const response = [overallStrengthScore]
+    const request = jest
+      .fn()
+      .mockResolvedValueOnce({ id: 'user-1' })
+      .mockResolvedValueOnce(response)
+    const client = createClient(request)
+
+    const result = await client.getCurrentStrengthScores()
+
+    expect(request).toHaveBeenNthCalledWith(1, '/users/userinfo')
+    expect(request).toHaveBeenNthCalledWith(2, '/users/user-1/strength-scores/current')
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(result).toBe(response)
   })
 
   it('passes explicit days unchanged and does not truncate history rows', async () => {

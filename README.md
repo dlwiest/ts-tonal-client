@@ -441,6 +441,48 @@ if (volumeScores && volumeScores.length >= 2) {
 }
 ```
 
+### Strength Scores
+
+Tonal's headline Strength Score, per body region. This is a different metric from the weekly
+`Functional Strength Score` returned by `getGoalMetrics()` — that one measures goal progress
+for a week, this one is the score the Tonal app shows you.
+
+```typescript
+// Current score for each region
+const scores = await client.getCurrentStrengthScores()
+for (const score of scores) {
+  // The Overall row is synthesized: bodyRegionDisplay is empty, familyActivity is absent,
+  // workoutActivityId is an all-zero uuid, and updatedAt is a zero date. Fall back to
+  // strengthBodyRegion for a label, and do not render its updatedAt.
+  const label = score.bodyRegionDisplay || score.strengthBodyRegion
+  console.log(`${label}: ${score.score}`)
+}
+// Upper Body: 1693 / Core: 1363 / Lower Body: 821 / Overall: 1292
+
+// Per-workout history. Defaults to the whole account.
+const history = await client.getStrengthScoreHistory()
+console.log(`${history.length} scored activities`)
+console.log(history[0]) // { upper, lower, core, overall, activityTime, workoutActivityId, ... }
+```
+
+**`days` is a calendar-day lookback, not a row count.** The underlying API parameter is named
+`limit`, but it selects a time window: a value smaller than the gap since your last workout
+returns an **empty array**, not "no results found". Passing `30` on an account last used
+90 days ago yields nothing.
+
+```typescript
+await client.getStrengthScoreHistory(365)   // activities in the last 365 days
+await client.getStrengthScoreHistory('all') // explicit; same as the default
+```
+
+The default `'all'` derives the window from your account creation date, so it stays correct as
+the account ages rather than relying on a large magic number. If `createdAt` is missing,
+unparseable, or in the future it throws `TonalClientError` rather than guessing — pass an
+explicit `days` in that case.
+
+Each history entry carries `workoutActivityId`, which makes this the only complete way to
+enumerate an account's activities: the list endpoints are capped at 50 records each.
+
 ### Movements
 
 ```typescript
