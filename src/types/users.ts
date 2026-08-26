@@ -222,6 +222,39 @@ export interface TonalCurrentStreak {
   updatedByActivityId: string // Workout ID that last updated the streak
 }
 
+export type TonalStrengthBodyRegion =
+  | 'Upper Body'
+  | 'Core'
+  | 'Lower Body'
+  | 'Overall'
+  | string
+
+export interface TonalStrengthScore {
+  id: string
+  createdAt: string
+  updatedAt: string
+  userId: string
+  workoutActivityId: string
+  strengthBodyRegion: TonalStrengthBodyRegion
+  bodyRegionDisplay: string
+  score: number
+  current: boolean
+  familyActivity?: unknown[]
+}
+
+export interface TonalStrengthScoreHistoryEntry {
+  id: string
+  userId: string
+  workoutActivityId: string
+  upper: number
+  lower: number
+  core: number
+  overall: number
+  activityTime: string
+}
+
+export type TonalStrengthScoreHistoryLookback = number | 'all'
+
 export interface TonalActivitySummary {
   id: string // Unique activity/session ID
   deletedAt: string | null

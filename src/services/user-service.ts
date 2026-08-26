@@ -1,5 +1,5 @@
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalStrengthScore, TonalStrengthScoreHistoryEntry, TonalClientError } from '../types'
 
 export class UserService {
   constructor(private httpClient: HttpClient) { }
@@ -71,6 +71,19 @@ export class UserService {
 
   async getCurrentStreak(userId: string): Promise<TonalCurrentStreak> {
     return this.httpClient.request(`/users/${userId}/streaks/current`)
+  }
+
+  async getCurrentStrengthScores(userId: string): Promise<TonalStrengthScore[]> {
+    return this.httpClient.request(`/users/${userId}/strength-scores/current`)
+  }
+
+  async getStrengthScoreHistory(userId: string, days: number): Promise<TonalStrengthScoreHistoryEntry[]> {
+    if (!Number.isSafeInteger(days) || days <= 0) {
+      throw new TonalClientError('Strength score history days must be a positive safe integer')
+    }
+
+    // Tonal's "limit" query parameter is a calendar-day window; small values return an empty array.
+    return this.httpClient.request(`/users/${userId}/strength-scores/history?limit=${days}`)
   }
 
   async getActivitySummaries(userId: string): Promise<TonalActivitySummary[]> {
