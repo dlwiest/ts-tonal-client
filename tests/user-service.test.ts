@@ -1,3 +1,7 @@
+import { createHash } from 'crypto'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { TonalClient } from '../src/client'
 import { HttpClient } from '../src/http/http-client'
 import { UserService } from '../src/services/user-service'
@@ -5,6 +9,7 @@ import {
   TonalClientError,
   TonalStrengthScore,
   TonalStrengthScoreHistoryEntry,
+  TonalWorkoutActivity,
 } from '../src/types'
 
 const overallStrengthScore: TonalStrengthScore = {
@@ -30,10 +35,32 @@ const historyEntry = (id: number): TonalStrengthScoreHistoryEntry => ({
   activityTime: '2024-03-01T12:00:00.000Z',
 })
 
-function createClient(request: jest.Mock): TonalClient {
+const sparseActivity: TonalWorkoutActivity = {
+  id: 'activity-1',
+  userId: 'user-1',
+  workoutId: 'workout-1',
+  beginTime: '2024-03-01T12:00:00.000Z',
+  totalDuration: 600,
+  totalSets: 1,
+  totalReps: 10,
+  totalVolume: 350,
+  workoutSetActivity: [
+    {
+      movementId: 'movement-1',
+      baseWeight: 35,
+    },
+  ],
+}
+
+const sparseCompletedActivity: TonalWorkoutActivity = {
+  ...sparseActivity,
+  completed: true,
+}
+
+function createClient(request: jest.Mock, cacheDir?: string): TonalClient {
   const client = Object.create(TonalClient.prototype) as TonalClient
   Object.assign(client, {
-    userService: new UserService({ request } as unknown as HttpClient),
+    userService: new UserService({ request } as unknown as HttpClient, cacheDir),
   })
   return client
 }
@@ -94,6 +121,129 @@ describe('UserService strength scores', () => {
       expect(request).not.toHaveBeenCalled()
     }
   )
+})
+
+describe('UserService workout activity detail', () => {
+  let tempRoot: string
+  let cacheDir: string
+  let request: jest.Mock
+  let service: UserService
+
+  beforeEach(() => {
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-tonal-activity-'))
+    cacheDir = path.join(tempRoot, 'cache')
+    request = jest.fn()
+    service = new UserService({ request } as unknown as HttpClient, cacheDir)
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempRoot, { recursive: true, force: true })
+  })
+
+  it('requests the encoded canonical activity id as one path segment', async () => {
+    request.mockResolvedValue(sparseCompletedActivity)
+
+    await expect(
+      service.getWorkoutActivityById('user-1', ' activity/one ')
+    ).resolves.toBe(sparseCompletedActivity)
+    expect(request).toHaveBeenCalledWith(
+      '/users/user-1/workout-activities/activity%2Fone'
+    )
+  })
+
+  it.each(['', '   ', '\t\n'])(
+    'rejects an empty activity id %p before requesting',
+    async (activityId) => {
+      await expect(
+        service.getWorkoutActivityById('user-1', activityId)
+      ).rejects.toThrow(TonalClientError)
+      expect(request).not.toHaveBeenCalled()
+      expect(fs.existsSync(cacheDir)).toBe(false)
+    }
+  )
+
+  it('caches a completed activity permanently and serves the second call from cache', async () => {
+    const response = { ...sparseCompletedActivity, id: 'activity-complete' }
+    request.mockResolvedValue(response)
+
+    await expect(
+      service.getWorkoutActivityById('user-1', 'activity-complete')
+    ).resolves.toBe(response)
+    await expect(
+      service.getWorkoutActivityById('user-1', 'activity-complete')
+    ).resolves.toEqual(response)
+
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not cache an incomplete activity', async () => {
+    const response: TonalWorkoutActivity = {
+      ...sparseActivity,
+      id: 'activity-incomplete',
+      completed: false,
+    }
+    request.mockResolvedValue(response)
+
+    await service.getWorkoutActivityById('user-1', 'activity-incomplete')
+    await service.getWorkoutActivityById('user-1', 'activity-incomplete')
+
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(fs.existsSync(cacheDir)).toBe(false)
+  })
+
+  it('does not cache an activity when completed is absent', async () => {
+    const response: TonalWorkoutActivity = {
+      ...sparseActivity,
+      id: 'activity-without-completed',
+    }
+    request.mockResolvedValue(response)
+
+    await service.getWorkoutActivityById('user-1', 'activity-without-completed')
+    await service.getWorkoutActivityById('user-1', 'activity-without-completed')
+
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(fs.existsSync(cacheDir)).toBe(false)
+  })
+
+  it('bypasses and replaces a completed cache entry when useCache is false', async () => {
+    const initial = {
+      ...sparseCompletedActivity,
+      id: 'activity-refresh',
+      totalVolume: 350,
+    }
+    const refreshed = {
+      ...initial,
+      totalVolume: 425,
+    }
+    request.mockResolvedValueOnce(initial).mockResolvedValueOnce(refreshed)
+
+    await service.getWorkoutActivityById('user-1', 'activity-refresh')
+    await expect(
+      service.getWorkoutActivityById('user-1', 'activity-refresh', false)
+    ).resolves.toBe(refreshed)
+    await expect(
+      service.getWorkoutActivityById('user-1', 'activity-refresh')
+    ).resolves.toEqual(refreshed)
+
+    expect(request).toHaveBeenCalledTimes(2)
+  })
+
+  it('falls through a corrupt cache entry to a successful request', async () => {
+    const activityId = 'corrupt/activity'
+    const cacheKey = `workout-activity-v1-${createHash('sha256')
+      .update(`user-1\0${activityId}`)
+      .digest('hex')}`
+    fs.mkdirSync(cacheDir)
+    fs.writeFileSync(path.join(cacheDir, `${cacheKey}.json`), '{not json')
+    request.mockResolvedValue(sparseCompletedActivity)
+
+    await expect(
+      service.getWorkoutActivityById('user-1', activityId)
+    ).resolves.toBe(sparseCompletedActivity)
+    expect(request).toHaveBeenCalledWith(
+      '/users/user-1/workout-activities/corrupt%2Factivity'
+    )
+  })
 })
 
 describe('TonalClient strength scores', () => {
@@ -185,4 +335,29 @@ describe('TonalClient strength scores', () => {
       expect(request).not.toHaveBeenCalled()
     }
   )
+})
+
+describe('TonalClient workout activity detail', () => {
+  it('resolves the user id and delegates activity retrieval with the cache choice', async () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-tonal-client-activity-'))
+    const request = jest
+      .fn()
+      .mockResolvedValueOnce({ id: 'user-1' })
+      .mockResolvedValueOnce(sparseActivity)
+    const client = createClient(request, path.join(tempRoot, 'cache'))
+
+    try {
+      await expect(
+        client.getWorkoutActivityById('activity/one', false)
+      ).resolves.toBe(sparseActivity)
+      expect(request).toHaveBeenNthCalledWith(1, '/users/userinfo')
+      expect(request).toHaveBeenNthCalledWith(
+        2,
+        '/users/user-1/workout-activities/activity%2Fone'
+      )
+      expect(request).toHaveBeenCalledTimes(2)
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true })
+    }
+  })
 })

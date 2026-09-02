@@ -4,7 +4,7 @@ import path from 'path'
 
 interface CacheEntry<T> {
   cachedAt: string
-  ttl: number
+  ttl: number | null
   data: T
 }
 
@@ -47,7 +47,10 @@ export class CacheManager {
       const now = Date.now()
       const age = now - cachedAt
 
-      if (!Number.isFinite(cachedAt) || typeof entry.ttl !== 'number' || age > entry.ttl) {
+      if (
+        !Number.isFinite(cachedAt) ||
+        (entry.ttl !== null && (typeof entry.ttl !== 'number' || age > entry.ttl))
+      ) {
         return null
       }
 
@@ -59,11 +62,19 @@ export class CacheManager {
   }
 
   async set<T>(key: string, data: T, ttl?: number): Promise<void> {
+    this.write(key, data, ttl || this.defaultTTL)
+  }
+
+  async setPermanent<T>(key: string, data: T): Promise<void> {
+    this.write(key, data, null)
+  }
+
+  private write<T>(key: string, data: T, ttl: number | null): void {
     const cachePath = this.getCachePath(key)
     this.ensureCacheDir()
     const entry: CacheEntry<T> = {
       cachedAt: new Date().toISOString(),
-      ttl: ttl || this.defaultTTL,
+      ttl,
       data,
     }
 
