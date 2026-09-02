@@ -145,6 +145,20 @@ export async function replacePrivateDirectory(
     if (current !== undefined) {
       backupPath = join(parent, `.${directoryName}.backup-${randomUUID()}`)
       await rename(path, backupPath)
+      try {
+        const moved = await validateManagedDirectory(backupPath, options)
+        if (
+          moved === undefined ||
+          moved.dev !== current.dev ||
+          moved.ino !== current.ino
+        ) {
+          throw new Error(`Refusing to replace directory changed during export: ${path}`)
+        }
+      } catch (error) {
+        await rename(backupPath, path)
+        backupPath = undefined
+        throw error
+      }
     }
 
     try {
