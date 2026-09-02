@@ -25,15 +25,41 @@ function parseDate(
     return undefined
   }
 
+  const dateOnlyMatch =
+    typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null
+  if (dateOnlyMatch !== null) {
+    const year = Number(dateOnlyMatch[1])
+    const month = Number(dateOnlyMatch[2])
+    const day = Number(dateOnlyMatch[3])
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+    const daysInMonth = [
+      31,
+      leapYear ? 29 : 28,
+      31,
+      30,
+      31,
+      30,
+      31,
+      31,
+      30,
+      31,
+      30,
+      31,
+    ]
+    if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) {
+      throw new TonalClientError(`${fieldName} must be a valid ISO-8601 date or timestamp`)
+    }
+  }
+
   const timestamp = value instanceof Date ? value.getTime() : Date.parse(value)
   if (Number.isNaN(timestamp)) {
     throw new TonalClientError(`${fieldName} must be a valid ISO-8601 date or timestamp`)
   }
 
-  const isDateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+  const isDateOnly = dateOnlyMatch !== null
   return {
     timestamp: endOfDay && isDateOnly ? timestamp + 24 * 60 * 60 * 1000 - 1 : timestamp,
-    localDate: isDateOnly ? value : undefined,
+    localDate: isDateOnly ? value as string : undefined,
   }
 }
 
@@ -180,6 +206,8 @@ export function buildHealthExport(
   if (
     startTimestamp !== undefined &&
     endTimestamp !== undefined &&
+    (startTimestamp.localDate === undefined) ===
+      (endTimestamp.localDate === undefined) &&
     startTimestamp.timestamp > endTimestamp.timestamp
   ) {
     throw new TonalClientError('startDate must be before or equal to endDate')

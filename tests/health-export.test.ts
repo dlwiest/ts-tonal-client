@@ -358,6 +358,25 @@ describe('buildHealthExport', () => {
     expect(adjacentUtcDay.activities).toEqual([])
   })
 
+  it('evaluates mixed local-day and timestamp bounds per activity', () => {
+    const earlyLocalDay = activity('early-local-day', '2026-01-01T22:30:00.000Z', {
+      localTimestamp: '2026-01-02T00:30:00.000+02:00',
+      timeZone: 'Europe/Athens',
+    })
+
+    const result = buildHealthExport(
+      { activities: [earlyLocalDay] },
+      {
+        startDate: '2026-01-02',
+        endDate: '2026-01-01T23:00:00.000Z',
+      }
+    )
+
+    expect(result.activities.map(item => item.activityId)).toEqual([
+      'early-local-day',
+    ])
+  })
+
   it('does not expose user, device, or application identifiers', () => {
     const result = buildHealthExport(source)
     const serialized = JSON.stringify(result)
@@ -367,7 +386,7 @@ describe('buildHealthExport', () => {
     expect(serialized).not.toContain('1.2.3')
   })
 
-  it('allowlists complete-export fields instead of leaking profile data', () => {
+  it('allowlists complete-export associations without leaking profile data or weight', () => {
     const sanitized = sanitizeCompleteExport({
       workouts: [
         {
@@ -382,8 +401,25 @@ describe('buildHealthExport', () => {
             weightPounds: 180,
             auth0Id: 'auth0|private',
           },
+          sets: [
+            {
+              workoutActivityID: 'activity-1',
+              userWeightPounds: 180,
+            },
+          ],
         },
       ],
+      currentMetrics: {
+        currentStrengthScores: {
+          workoutActivityId: 'activity-1',
+          current: true,
+          userId: 'private-user-id',
+        },
+      },
+      referenceData: {
+        goals: [{ id: 'goal-1' }],
+        goalMetrics: [{ id: 'metric-1', goalId: 'goal-1' }],
+      },
       userInfo: {
         id: 'private-user-id',
         email: 'private@example.com',
@@ -397,8 +433,19 @@ describe('buildHealthExport', () => {
             id: 'activity-1',
             totalReps: 10,
           },
+          sets: [{ workoutActivityID: 'activity-1' }],
         },
       ],
+      currentMetrics: {
+        currentStrengthScores: {
+          workoutActivityId: 'activity-1',
+          current: true,
+        },
+      },
+      referenceData: {
+        goals: [{ id: 'goal-1' }],
+        goalMetrics: [{ id: 'metric-1', goalId: 'goal-1' }],
+      },
     })
   })
 
@@ -452,6 +499,8 @@ describe('buildHealthExport', () => {
 
   it.each([
     [{ startDate: 'not-a-date' }, 'startDate must be a valid'],
+    [{ startDate: '2026-02-30' }, 'startDate must be a valid'],
+    [{ endDate: '2025-02-29' }, 'endDate must be a valid'],
     [{ endDate: 'not-a-date' }, 'endDate must be a valid'],
     [{ limit: 0 }, 'limit must be a positive integer'],
     [{ limit: 1.5 }, 'limit must be a positive integer'],

@@ -1,9 +1,10 @@
 #!/usr/bin/env tsx
 
-import 'dotenv/config'
-import { chmod, mkdir, writeFile } from 'node:fs/promises'
-import { basename } from 'node:path'
-import TonalClient, {
+import dotenv from 'dotenv'
+import { basename, join } from 'node:path'
+import { replacePrivateDirectory, writePrivateFile } from './private-export-files'
+import TonalClient from '../src/index'
+import type {
   TonalFormattedWorkoutSummary,
   TonalMovement,
   TonalWorkoutActivity,
@@ -73,9 +74,9 @@ const ALLOWED_EXPORT_KEYS: Readonly<Record<string, true>> = {
   timeZone: true,
   assetID: true,
   targetArea: true,
-  userWeightPounds: true,
   movementId: true,
   workoutActivityID: true,
+  workoutActivityId: true,
   prescribedReps: true,
   prescribedDuration: true,
   repetition: true,
@@ -204,6 +205,7 @@ const ALLOWED_EXPORT_KEYS: Readonly<Record<string, true>> = {
   lowRange: true,
   highRange: true,
   score: true,
+  current: true,
   currentMetrics: true,
   muscleReadiness: true,
   currentStrengthScores: true,
@@ -285,9 +287,12 @@ const ALLOWED_EXPORT_KEYS: Readonly<Record<string, true>> = {
   trainingEffectGoals: true,
   relations: true,
   filterItemId: true,
+  goalId: true,
   infoVidId: true,
   secondary: true,
   tertiary: true,
+  metric: true,
+  category: true,
   retrievalErrors: true,
   uploadInstructions: true,
   workoutFiles: true,
@@ -375,25 +380,105 @@ function mapWorkout(
   }
 }
 
-async function optionalMetric<T>(
-  label: string,
+export type RetrievalMetric =
+  | 'formattedWorkoutSummary'
+  | 'dailyMetrics'
+  | 'lifetimeStatistics'
+  | 'muscleReadiness'
+  | 'currentStreak'
+  | 'currentStrengthScores'
+  | 'strengthScoreHistory'
+  | 'targetScores'
+  | 'metricScores'
+  | 'achievementStats'
+  | 'achievements'
+  | 'homeCalendar'
+  | 'goals'
+  | 'goalMetrics'
+  | 'trainingTypes'
+  | 'trainingEffectGoals'
+
+export interface RetrievalError {
+  metric: RetrievalMetric
+  category: 'provider-error'
+  status: 'unavailable'
+}
+
+export async function optionalMetric<T>(
+  metric: RetrievalMetric,
   getValue: () => Promise<T>,
-  errors: string[]
+  errors: RetrievalError[]
 ): Promise<T | undefined> {
   try {
     return await getValue()
-  } catch (error) {
-    errors.push(`${label}: ${error instanceof Error ? error.message : 'Unavailable'}`)
+  } catch {
+    errors.push({
+      metric,
+      category: 'provider-error',
+      status: 'unavailable',
+    })
     return undefined
   }
 }
 
-async function writePrivateFile(filePath: string, contents: string): Promise<void> {
-  await writeFile(filePath, contents, { mode: 0o600 })
-  await chmod(filePath, 0o600)
+export async function writeChatGptBundle(
+  uploadDirectory: string,
+  overview: Record<string, unknown>,
+  workoutsByYear: ReadonlyMap<string, unknown[]>,
+  unitsAndInterpretation: unknown
+): Promise<string[]> {
+  if (basename(uploadDirectory) !== 'tonal-chatgpt-export') {
+    throw new Error('Refusing to replace a directory not named tonal-chatgpt-export')
+  }
+  for (const year of workoutsByYear.keys()) {
+    if (!/^(?:\d{4}|unknown-year)$/.test(year)) {
+      throw new Error(`Refusing unsafe workout segment year: ${year}`)
+    }
+  }
+
+  const workoutFiles = [...workoutsByYear.keys()]
+    .sort()
+    .map(year => `workouts-${year}.json`)
+
+  await replacePrivateDirectory(
+    uploadDirectory,
+    async temporaryDirectory => {
+      await Promise.all([
+        writePrivateFile(
+          join(temporaryDirectory, 'overview-and-metrics.json'),
+          `${JSON.stringify({
+            ...overview,
+            uploadInstructions:
+              'Upload this file together with every file listed in workoutFiles. Treat activity.id as the workout key and movementId as the movement-catalog key.',
+            workoutFiles,
+          })}\n`
+        ),
+        ...[...workoutsByYear.entries()].map(([year, workouts]) =>
+          writePrivateFile(
+            join(temporaryDirectory, `workouts-${year}.json`),
+            `${JSON.stringify({
+              schemaVersion: 2,
+              exportType: 'tonal-workout-history-segment',
+              year,
+              unitsAndInterpretation,
+              workouts,
+            })}\n`
+          )
+        ),
+      ])
+    },
+    {
+      isManagedEntry: name =>
+        name === 'overview-and-metrics.json' ||
+        /^workouts-(?:\d{4}|unknown-year)\.json$/.test(name),
+    }
+  )
+
+  return workoutFiles
 }
 
 async function main() {
+  dotenv.config()
   const username = process.env.TONAL_USERNAME
   const password = process.env.TONAL_PASSWORD
 
@@ -407,14 +492,14 @@ async function main() {
     (left, right) => Date.parse(left.beginTime) - Date.parse(right.beginTime)
   )
   const activityIds = sortedActivities.map(activity => activity.id)
-  const retrievalErrors: string[] = []
+  const retrievalErrors: RetrievalError[] = []
   const formattedSummaries: TonalFormattedWorkoutSummary[] = []
 
   for (let index = 0; index < activityIds.length; index += 5) {
     const batch = await Promise.all(
       activityIds.slice(index, index + 5).map(activityId =>
         optionalMetric(
-          `workoutSummary ${activityId}`,
+          'formattedWorkoutSummary',
           () => client.getFormattedWorkoutSummary(activityId),
           retrievalErrors
         )
@@ -568,8 +653,6 @@ async function main() {
   await writePrivateFile(outputPath, `${JSON.stringify(exportData)}\n`)
 
   const uploadDirectory = 'tonal-chatgpt-export'
-  await mkdir(uploadDirectory, { recursive: true, mode: 0o700 })
-  await chmod(uploadDirectory, 0o700)
   const exportRecord = exportData as Record<string, unknown>
   const { workouts: _workouts, ...overview } = exportRecord
   const workoutsByYear = new Map<string, unknown[]>()
@@ -583,32 +666,11 @@ async function main() {
     workoutsByYear.set(year, yearWorkouts)
   })
 
-  const workoutFiles = [...workoutsByYear.keys()]
-    .sort()
-    .map(year => `workouts-${year}.json`)
-  await writePrivateFile(
-    `${uploadDirectory}/overview-and-metrics.json`,
-    `${JSON.stringify({
-      ...overview,
-      uploadInstructions:
-        'Upload this file together with every file listed in workoutFiles. Treat activity.id as the workout key and movementId as the movement-catalog key.',
-      workoutFiles,
-    })}\n`
-  )
-
-  await Promise.all(
-    [...workoutsByYear.entries()].map(([year, workouts]) =>
-      writePrivateFile(
-        `${uploadDirectory}/workouts-${year}.json`,
-        `${JSON.stringify({
-          schemaVersion: 2,
-          exportType: 'tonal-workout-history-segment',
-          year,
-          unitsAndInterpretation: exportRecord.unitsAndInterpretation,
-          workouts,
-        })}\n`
-      )
-    )
+  const workoutFiles = await writeChatGptBundle(
+    uploadDirectory,
+    overview,
+    workoutsByYear,
+    exportRecord.unitsAndInterpretation
   )
 
   console.log(`Exported ${sortedActivities.length} workouts and ${totalSets} sets to ${outputPath}`)

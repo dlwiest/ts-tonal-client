@@ -226,9 +226,10 @@ await writeFile(
 )
 ```
 
-Run `npm run example:health-export` to write a complete export to
-`tonal-health-export.json`. The example creates the file with owner-only
-permissions where the operating system supports them.
+Run `npm run example:health-export` to write a compact export of the 50 most
+recent Tonal workouts to `tonal-health-export.json`. The example atomically
+replaces the file with owner-only permissions and refuses symbolic-link
+destinations.
 
 The export intentionally excludes profile details, account identifiers, device
 identifiers, application versions, and authentication data. It still contains
@@ -290,16 +291,17 @@ streaks, lifetime statistics, achievements, and reference definitions.
 The complete export is structured as JSON for analysis tools such as ChatGPT.
 It includes a data dictionary explaining units and Tonal's per-cable resistance
 convention. Account, device, application, subscription, and authentication
-identifiers are removed recursively. The JSON is compacted to reduce upload
-size and text-token usage without dropping data. The file still contains highly
-private health information and is created with owner-only permissions where
-supported.
+identifiers and user weight are removed recursively. The JSON is compacted to
+reduce upload size and text-token usage without dropping allowed data. The file
+still contains highly private health information and is atomically replaced
+with owner-only permissions.
 
-The script also creates a `tonal-chatgpt-export` directory containing
-`overview-and-metrics.json` and one `workouts-YYYY.json` file for each year in
-the history. Upload all files from that directory together. The split bundle
-contains the same information but keeps each text file smaller and easier for
-ChatGPT to analyze completely.
+The script also atomically recreates a private `tonal-chatgpt-export` directory
+containing `overview-and-metrics.json` and one `workouts-YYYY.json` file for
+each year in the history, so files from an older export cannot survive a rerun.
+Upload every file listed by `overview-and-metrics.json` together. The split
+bundle contains the same information but keeps each text file smaller and
+easier for ChatGPT to analyze completely.
 
 ## API Reference
 

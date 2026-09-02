@@ -315,10 +315,15 @@ export class TonalClient {
       return initialExport
     }
 
+    const tonalActivityIds = initialExport.activities
+      .filter(activity => activity.source === 'tonal')
+      .map(activity => activity.activityId)
+    if (tonalActivityIds.length === 0) {
+      return initialExport
+    }
+
     const [activityDetails, movements] = await Promise.all([
-      this.getWorkoutActivityDetails(
-        initialExport.activities.map(activity => activity.activityId)
-      ),
+      this.getWorkoutActivityDetails(tonalActivityIds),
       this.getMovements(),
     ])
 

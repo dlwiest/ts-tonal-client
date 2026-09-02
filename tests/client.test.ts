@@ -1,4 +1,5 @@
-import TonalClient, { TonalWorkoutActivity } from '../src'
+import TonalClient from '../src'
+import type { TonalActivitySummary, TonalWorkoutActivity } from '../src'
 
 function workoutActivity(id: string): TonalWorkoutActivity {
   return {
@@ -26,6 +27,47 @@ function workoutActivity(id: string): TonalWorkoutActivity {
     isSmartViewActivated: false,
     mcbServiceVersion: '1.0.0',
     workoutSetActivity: [],
+  }
+}
+
+function activitySummary(
+  id: string,
+  activityType: 'Internal' | 'External'
+): TonalActivitySummary {
+  const timestamp = id === 'external'
+    ? '2026-01-02T00:00:00.000Z'
+    : '2026-01-01T00:00:00.000Z'
+  return {
+    id,
+    deletedAt: null,
+    userId: 'user-1',
+    name: id,
+    workoutId: `workout-${id}`,
+    isInProgram: false,
+    isGuidedWorkout: false,
+    isBaselineWorkout: false,
+    timestamp,
+    UTCTimestamp: timestamp,
+    localTimestamp: timestamp,
+    endTime: timestamp,
+    timeZone: 'UTC',
+    targetArea: 'FULL BODY',
+    duration: 1800,
+    timeUnderTension: 300,
+    repGoalPercentage: 100,
+    totalReps: 10,
+    totalVolume: 1000,
+    totalWork: 50,
+    level: 'INTERMEDIATE',
+    programWeeks: 0,
+    programWorkoutsPerWeek: 0,
+    groupIds: [],
+    workoutType: 'Custom',
+    completed: true,
+    deviceId: 'device-1',
+    appVersion: '1.0.0',
+    activityType,
+    triggeredTimedWeightOff: false,
   }
 }
 
@@ -152,5 +194,36 @@ describe('TonalClient health export activity details', () => {
       100,
       100
     )
+  })
+
+  it('requests set details only for Tonal activities in a mixed export', async () => {
+    const getWorkoutActivityDetails = jest
+      .fn()
+      .mockResolvedValue([workoutActivity('tonal')])
+    const getMovements = jest.fn().mockResolvedValue([])
+    const client = Object.create(TonalClient.prototype) as TonalClient
+
+    Object.assign(client as object, {
+      getActivitySummaries: jest.fn().mockResolvedValue([
+        activitySummary('external', 'External'),
+        activitySummary('tonal', 'Internal'),
+      ]),
+      getWorkoutActivityDetails,
+      getMovements,
+    })
+
+    const exported = await client.getHealthExport({
+      includeExternalActivities: true,
+      includeSetDetails: true,
+      includeMuscleReadiness: false,
+      includeLifetimeStatistics: false,
+    })
+
+    expect(exported.activities.map(activity => activity.source)).toEqual([
+      'external',
+      'tonal',
+    ])
+    expect(getWorkoutActivityDetails).toHaveBeenCalledWith(['tonal'])
+    expect(getMovements).toHaveBeenCalledTimes(1)
   })
 })
