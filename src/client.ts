@@ -32,6 +32,7 @@ import {
   TonalStrengthScore,
   TonalStrengthScoreHistoryEntry,
   TonalStrengthScoreHistoryLookback,
+  TonalWorkoutActivity,
   TonalClientError,
 } from './types'
 
@@ -49,7 +50,7 @@ export class TonalClient {
     this.httpClient = new HttpClient(this.authManager)
     this.workoutService = new WorkoutService(this.httpClient)
     this.movementService = new MovementService(this.httpClient, cacheDir)
-    this.userService = new UserService(this.httpClient)
+    this.userService = new UserService(this.httpClient, cacheDir)
   }
 
   static async create(credentials: { username: string; password: string; cacheDir?: string }): Promise<TonalClient> {
@@ -166,6 +167,14 @@ export class TonalClient {
     }
 
     return this.userService.getStrengthScoreHistory(userInfo.id, lookbackDays)
+  }
+
+  async getWorkoutActivityById(
+    activityId: string,
+    useCache: boolean = true
+  ): Promise<TonalWorkoutActivity> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getWorkoutActivityById(userInfo.id, activityId, useCache)
   }
 
   async getActivitySummaries(): Promise<TonalActivitySummary[]> {

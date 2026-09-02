@@ -32,6 +32,23 @@ describe('CacheManager', () => {
     await expect(cache.get('short-lived')).resolves.toBeNull()
   })
 
+  it('keeps permanent entries when their ttl is null', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+
+    const cache = new CacheManager(cacheDir, 1000)
+    await cache.setPermanent('permanent', { value: 'immutable' })
+
+    const entry = JSON.parse(
+      fs.readFileSync(path.join(cacheDir, 'permanent.json'), 'utf-8')
+    )
+    expect(entry.ttl).toBeNull()
+
+    jest.setSystemTime(new Date('2126-01-01T00:00:00.000Z'))
+
+    await expect(cache.get('permanent')).resolves.toEqual({ value: 'immutable' })
+  })
+
   it('treats an invalid cachedAt timestamp as a cache miss', async () => {
     fs.mkdirSync(cacheDir)
     fs.writeFileSync(path.join(cacheDir, 'invalid-date.json'), JSON.stringify({

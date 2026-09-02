@@ -74,6 +74,46 @@ export interface TonalWorkout {
   createdSource?: unknown | null // TODO: investigate how workouts are created/imported
 }
 
+export interface TonalWorkoutSetActivity {
+  movementId: string
+  prescribedReps?: number | null
+  repetition?: number | null
+  repetitionTotal?: number | null
+  weightPercentage?: number | null
+  baseWeight?: number | null
+  eccentricWeight?: number | null
+  chainsWeight?: number | null
+  blockNumber?: number | null
+  blockStart?: boolean | null
+  sideNumber?: number | null
+  setId?: string | null
+  spotter?: boolean | null
+}
+
+export interface TonalWorkoutActivity {
+  id: string
+  userId: string
+  workoutId: string
+  workoutType?: string | null
+  beginTime: string
+  endTime?: string | null
+  totalDuration: number
+  activeDuration?: number | null
+  restDuration?: number | null
+  totalMovements?: number | null
+  totalSets: number
+  totalReps: number
+  totalVolume: number
+  totalConcentricWork?: number | null
+  percentCompleted?: number | null
+  completed?: boolean | null
+  workoutSetActivity: TonalWorkoutSetActivity[]
+  contentCard?: unknown
+  deviceId?: string | null
+  timezone?: string | null
+  appVersion?: string | null
+}
+
 export interface TonalSharedWorkout {
   id: string
   sharerUserId: string

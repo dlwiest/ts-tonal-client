@@ -1,8 +1,14 @@
+import { createHash } from 'crypto'
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalStrengthScore, TonalStrengthScoreHistoryEntry, TonalClientError } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalStrengthScore, TonalStrengthScoreHistoryEntry, TonalWorkoutActivity, TonalClientError } from '../types'
+import { CacheManager } from '../utils/cache-manager'
 
 export class UserService {
-  constructor(private httpClient: HttpClient) { }
+  private cacheManager: CacheManager
+
+  constructor(private httpClient: HttpClient, cacheDir?: string) {
+    this.cacheManager = new CacheManager(cacheDir)
+  }
 
   async getUserInfo(): Promise<TonalUserInfo> {
     return this.httpClient.request('/users/userinfo')
@@ -84,6 +90,46 @@ export class UserService {
 
     // Tonal's "limit" query parameter is a calendar-day window; small values return an empty array.
     return this.httpClient.request(`/users/${userId}/strength-scores/history?limit=${days}`)
+  }
+
+  async getWorkoutActivityById(
+    userId: string,
+    activityId: string,
+    useCache: boolean = true
+  ): Promise<TonalWorkoutActivity> {
+    const canonicalActivityId = activityId.trim()
+    if (!canonicalActivityId) {
+      throw new TonalClientError('Workout activity id must not be empty')
+    }
+
+    const cacheKey = `workout-activity-v1-${createHash('sha256')
+      .update(`${userId}\0${canonicalActivityId}`)
+      .digest('hex')}`
+
+    if (useCache) {
+      try {
+        const cached = await this.cacheManager.get<TonalWorkoutActivity>(cacheKey)
+        if (cached !== null) {
+          return cached
+        }
+      } catch {
+        // Cache reads are best-effort and must not prevent a fresh request.
+      }
+    }
+
+    const activity = await this.httpClient.request<TonalWorkoutActivity>(
+      `/users/${userId}/workout-activities/${encodeURIComponent(canonicalActivityId)}`
+    )
+
+    if (activity.completed === true) {
+      try {
+        await this.cacheManager.setPermanent(cacheKey, activity)
+      } catch {
+        // Cache writes are best-effort and must not hide a successful API response.
+      }
+    }
+
+    return activity
   }
 
   async getActivitySummaries(userId: string): Promise<TonalActivitySummary[]> {
