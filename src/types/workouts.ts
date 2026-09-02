@@ -249,6 +249,23 @@ export interface TonalFormattedWorkoutMovementSet {
 /**
  * Workout summary returned by
  * GET /users/{userId}/workout-summaries/{activityId}.
+ *
+ * Optionality here is derived from OBSERVATION, not from a published contract:
+ * Tonal's API is private and undocumented, so "required" below means "present in
+ * every record we have ever measured", not "guaranteed by the vendor".
+ *
+ * Basis (measured 2026-09-02): all 422 activities on a single account, spanning
+ * 2023-05 to 2026-02, plus a targeted re-check of the 16 most abnormal sessions
+ * in that set - including four with percentCompleted === 0. Every field marked
+ * required was present and non-null in all of them; every optional field was
+ * absent from at least one. Guided and free-lift workouts are both covered.
+ * Note that `completed === false` never appears: the activity-list endpoints do
+ * not return in-progress workouts, so no in-progress record was observable.
+ *
+ * Consequence for callers: treat a required field as a strong invariant, not a
+ * safety guarantee. If a counterexample ever appears - another account, a
+ * deleted workout, or an id obtained outside the activity-list endpoints -
+ * widen the field here rather than patching around it at the call site.
  */
 export interface TonalFormattedWorkoutSummary {
   UTCTimestamp: string
