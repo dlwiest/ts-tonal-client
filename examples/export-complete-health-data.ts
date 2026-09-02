@@ -1,7 +1,8 @@
 #!/usr/bin/env tsx
 
 import 'dotenv/config'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 import TonalClient, {
   TonalFormattedWorkoutSummary,
   TonalMovement,
@@ -9,20 +10,293 @@ import TonalClient, {
   TonalWorkoutSetActivity,
 } from '../src/index'
 
-const EXCLUDED_KEYS = new Set([
-  'userId',
-  'deviceId',
-  'appVersion',
-  'subscriptionId',
-  'partnerActivityId',
-  'mcbServiceVersion',
-  'programEnrollmentId',
-  'workoutSignupId',
-])
+const ALLOWED_EXPORT_KEYS: Readonly<Record<string, true>> = {
+  schemaVersion: true,
+  exportType: true,
+  exportedAt: true,
+  privacyNotice: true,
+  coverage: true,
+  start: true,
+  end: true,
+  workoutCount: true,
+  detailedSetCount: true,
+  movementCount: true,
+  requestedDailyMetricDays: true,
+  unitsAndInterpretation: true,
+  duration: true,
+  resistance: true,
+  volume: true,
+  averageResistance: true,
+  rangeOfMotion: true,
+  strengthScores: true,
+  readiness: true,
+  aggregateWorkoutTotals: true,
+  totalDurationSeconds: true,
+  activeDurationSeconds: true,
+  restDurationSeconds: true,
+  totalSets: true,
+  totalReps: true,
+  totalVolumePounds: true,
+  totalConcentricWork: true,
+  workouts: true,
+  activity: true,
+  formattedSummary: true,
+  sets: true,
+  movement: true,
+  derivedEstimates: true,
+  id: true,
+  workoutId: true,
+  workoutType: true,
+  timezone: true,
+  beginTime: true,
+  endTime: true,
+  totalDuration: true,
+  activeDuration: true,
+  restDuration: true,
+  totalMovements: true,
+  totalVolume: true,
+  percentCompleted: true,
+  completed: true,
+  recoveryWeight: true,
+  hasAppleWatch: true,
+  isFirstWorkoutOfDay: true,
+  isSmartViewActivated: true,
+  programId: true,
+  deletedAt: true,
+  name: true,
+  isInProgram: true,
+  isGuidedWorkout: true,
+  isBaselineWorkout: true,
+  timestamp: true,
+  UTCTimestamp: true,
+  localTimestamp: true,
+  timeZone: true,
+  assetID: true,
+  targetArea: true,
+  userWeightPounds: true,
+  movementId: true,
+  workoutActivityID: true,
+  prescribedReps: true,
+  prescribedDuration: true,
+  repetition: true,
+  repetitionTotal: true,
+  blockNumber: true,
+  blockStart: true,
+  burnout: true,
+  calibration: true,
+  chains: true,
+  dropSet: true,
+  eccentric: true,
+  finalSet: true,
+  flex: true,
+  practice: true,
+  progressive: true,
+  skipDemo: true,
+  skipSetup: true,
+  spotter: true,
+  warmUp: true,
+  beginTimeMCB: true,
+  endTimeMCB: true,
+  durationBasedRepGoal: true,
+  sideNumber: true,
+  movementSide: true,
+  setGroup: true,
+  setId: true,
+  round: true,
+  sortOrder: true,
+  weightPercentage: true,
+  avgWeight: true,
+  baseWeight: true,
+  minWeight: true,
+  maxWeight: true,
+  suggestedWeight: true,
+  suggestedWeightChange: true,
+  eccentricWeight: true,
+  eccentricWeightFrac: true,
+  chainsWeight: true,
+  chainsWeightFrac: true,
+  romWeight: true,
+  romWeightFrac: true,
+  romWeightMode: true,
+  offMachineModifiedWeight: true,
+  maxSpottedWeight: true,
+  weightControlMode: true,
+  totalOnMachineVolume: true,
+  repCount: true,
+  cvRepCount: true,
+  repsInReserve: true,
+  oneRepMax: true,
+  avgRom: true,
+  rom: true,
+  romLengthIn: true,
+  meanMaxPos: true,
+  avgVelocity: true,
+  isoModeSpeed: true,
+  concentricWork: true,
+  totalConDuration: true,
+  maxConPower: true,
+  velAtMaxConPower: true,
+  weightAtMaxConPower: true,
+  baseOfSupport: true,
+  pushPull: true,
+  familyDisplay: true,
+  inFreeLift: true,
+  countReps: true,
+  isTwoSided: true,
+  isBilateral: true,
+  isAlternating: true,
+  offMachineAccessory: true,
+  descriptionHow: true,
+  descriptionWhy: true,
+  imageAssetId: true,
+  skillLevel: true,
+  featureGroupIds: true,
+  isGeneric: true,
+  onMachineInfo: true,
+  resistanceType: true,
+  spotterDisabled: true,
+  eccentricDisabled: true,
+  chainsDisabled: true,
+  burnoutDisabled: true,
+  inconsistencyScore: true,
+  strugglingScore: true,
+  durationInconsistencyScore: true,
+  durationStrugglingScore: true,
+  maxVelInconsistencyScore: true,
+  maxVelStrugglingScore: true,
+  romInconsistencyScore: true,
+  romStrugglingScore: true,
+  inchesUpdated: true,
+  powerUpdated: true,
+  spotterMode: true,
+  shortName: true,
+  muscleGroups: true,
+  bodyRegion: true,
+  family: true,
+  accessory: true,
+  bilateral: true,
+  twoSided: true,
+  alternating: true,
+  onMachine: true,
+  averageResistancePerCablePounds: true,
+  averageResistancePounds: true,
+  estimatedOneRepMaxPerCablePounds: true,
+  oneRepMaxPounds: true,
+  rangeOfMotionInches: true,
+  longitudinalMetrics: true,
+  dailyMetrics: true,
+  strengthScoreHistory: true,
+  targetScores: true,
+  metricScores: true,
+  date: true,
+  totalWorkouts: true,
+  totalExternalActivities: true,
+  totalWork: true,
+  totalTimeUnderTension: true,
+  upper: true,
+  lower: true,
+  core: true,
+  overall: true,
+  activityTime: true,
+  weekNumber: true,
+  metricId: true,
+  target: true,
+  lowRange: true,
+  highRange: true,
+  score: true,
+  currentMetrics: true,
+  muscleReadiness: true,
+  currentStrengthScores: true,
+  currentStreak: true,
+  homeCalendar: true,
+  Chest: true,
+  Shoulders: true,
+  Back: true,
+  Triceps: true,
+  Biceps: true,
+  Abs: true,
+  Obliques: true,
+  Quads: true,
+  Glutes: true,
+  Hamstrings: true,
+  Calves: true,
+  createdAt: true,
+  updatedAt: true,
+  strengthBodyRegion: true,
+  bodyRegionDisplay: true,
+  familyActivity: true,
+  strengthFamily: true,
+  currentStreakStartDate: true,
+  lastUpdatedWeek: true,
+  maxStreak: true,
+  maxStreakStartDate: true,
+  dailySchedules: true,
+  recommendationType: true,
+  tiles: true,
+  type: true,
+  assetId: true,
+  title: true,
+  level: true,
+  trainingTypeIds: true,
+  coachId: true,
+  accessories: true,
+  compatibilityStatus: true,
+  status: true,
+  lockedReason: true,
+  workoutSummaryData: true,
+  work: true,
+  muscleUtilization: true,
+  muscleGroup: true,
+  value: true,
+  lifetimeAndAchievements: true,
+  lifetimeStatistics: true,
+  achievementStats: true,
+  achievements: true,
+  maxVolumeInWorkout: true,
+  maxVolumeInAWeek: true,
+  avgVolumePerWorkout: true,
+  avgVolumePerWeek: true,
+  maxWorkoutDuration: true,
+  avgWorkoutDuration: true,
+  maxWorkoutsPerWeek: true,
+  total: true,
+  avgWorkoutsPerWeek: true,
+  totalFreeliftWorkouts: true,
+  totalCustomWorkouts: true,
+  movements: true,
+  movementIds: true,
+  programs: true,
+  totalProgramVolume: true,
+  totalProgramWorkouts: true,
+  totalAchievements: true,
+  nextMilestones: true,
+  description: true,
+  shortDescription: true,
+  achievementCategoryId: true,
+  iconAssetId: true,
+  active: true,
+  needsTemplate: true,
+  achievementId: true,
+  achievement: true,
+  referenceData: true,
+  goals: true,
+  goalMetrics: true,
+  trainingTypes: true,
+  trainingEffectGoals: true,
+  relations: true,
+  filterItemId: true,
+  infoVidId: true,
+  secondary: true,
+  tertiary: true,
+  retrievalErrors: true,
+  uploadInstructions: true,
+  workoutFiles: true,
+  year: true,
+}
 
-function sanitize(value: unknown): unknown {
+export function sanitizeCompleteExport(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map(sanitize)
+    return value.map(sanitizeCompleteExport)
   }
   if (value === null || typeof value !== 'object') {
     return value
@@ -30,40 +304,35 @@ function sanitize(value: unknown): unknown {
 
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => !EXCLUDED_KEYS.has(key))
-      .filter(([key]) => !/(password|accessToken|refreshToken|authorization)/i.test(key))
-      .map(([key, nestedValue]) => [key, sanitize(nestedValue)])
+      .filter(([key]) => ALLOWED_EXPORT_KEYS[key] === true)
+      .map(([key, nestedValue]) => [key, sanitizeCompleteExport(nestedValue)])
   )
 }
 
 function sanitizedRecord(value: object): Record<string, unknown> {
-  return sanitize(value) as Record<string, unknown>
+  return sanitizeCompleteExport(value) as Record<string, unknown>
 }
 
-function derivedSetMetrics(set: TonalWorkoutSetActivity) {
+function derivedSetEstimates(set: TonalWorkoutSetActivity) {
   const totalVolumePounds = set.totalOnMachineVolume ?? set.volume
-  const effectiveAverageResistancePounds =
+  const averageResistancePounds =
     set.repCount !== undefined &&
     set.repCount > 0 &&
     totalVolumePounds !== undefined &&
     totalVolumePounds > 0
       ? totalVolumePounds / set.repCount
       : undefined
-  const effectiveEstimatedOneRepMaxPounds =
+  const oneRepMaxPounds =
     set.oneRepMax !== undefined &&
     set.avgWeight !== undefined &&
     set.avgWeight > 0 &&
-    effectiveAverageResistancePounds !== undefined
-      ? set.oneRepMax * (effectiveAverageResistancePounds / set.avgWeight)
+    averageResistancePounds !== undefined
+      ? set.oneRepMax * (averageResistancePounds / set.avgWeight)
       : undefined
 
   return {
-    totalVolumePounds,
-    averageResistancePerCablePounds: set.avgWeight,
-    effectiveAverageResistancePounds,
-    estimatedOneRepMaxPerCablePounds: set.oneRepMax,
-    effectiveEstimatedOneRepMaxPounds,
-    rangeOfMotionInches: set.romLengthIn,
+    averageResistancePounds,
+    oneRepMaxPounds,
   }
 }
 
@@ -97,11 +366,11 @@ function mapWorkout(
     activity: sanitizedRecord(activityMetrics),
     formattedSummary: formattedSummary === undefined
       ? undefined
-      : sanitize(formattedSummary),
+      : sanitizeCompleteExport(formattedSummary),
     sets: workoutSetActivity.map(set => ({
       ...sanitizedRecord(set),
       movement: movementReference(movements.get(set.movementId)),
-      derivedMetrics: derivedSetMetrics(set),
+      derivedEstimates: derivedSetEstimates(set),
     })),
   }
 }
@@ -119,6 +388,11 @@ async function optionalMetric<T>(
   }
 }
 
+async function writePrivateFile(filePath: string, contents: string): Promise<void> {
+  await writeFile(filePath, contents, { mode: 0o600 })
+  await chmod(filePath, 0o600)
+}
+
 async function main() {
   const username = process.env.TONAL_USERNAME
   const password = process.env.TONAL_PASSWORD
@@ -133,7 +407,26 @@ async function main() {
     (left, right) => Date.parse(left.beginTime) - Date.parse(right.beginTime)
   )
   const activityIds = sortedActivities.map(activity => activity.id)
-  const formattedSummaries = await client.getFormattedWorkoutSummaries(activityIds)
+  const retrievalErrors: string[] = []
+  const formattedSummaries: TonalFormattedWorkoutSummary[] = []
+
+  for (let index = 0; index < activityIds.length; index += 5) {
+    const batch = await Promise.all(
+      activityIds.slice(index, index + 5).map(activityId =>
+        optionalMetric(
+          `workoutSummary ${activityId}`,
+          () => client.getFormattedWorkoutSummary(activityId),
+          retrievalErrors
+        )
+      )
+    )
+    for (const summary of batch) {
+      if (summary !== undefined) {
+        formattedSummaries.push(summary)
+      }
+    }
+  }
+
   const formattedById = new Map(
     formattedSummaries.map(summary => [summary.id, summary])
   )
@@ -153,7 +446,6 @@ async function main() {
     1,
     Math.ceil((Date.now() - earliestTimestamp) / (24 * 60 * 60 * 1000)) + 1
   )
-  const retrievalErrors: string[] = []
 
   const [
     dailyMetrics,
@@ -196,7 +488,7 @@ async function main() {
   const mappedWorkouts = sortedActivities.map(activity =>
     mapWorkout(activity, formattedById.get(activity.id), movementById)
   )
-  const exportData = sanitize({
+  const exportData = sanitizeCompleteExport({
     schemaVersion: 2,
     exportType: 'tonal-complete-health-history',
     exportedAt: new Date().toISOString(),
@@ -215,20 +507,26 @@ async function main() {
       resistance: 'pounds',
       volume: 'pounds; Tonal totalOnMachineVolume reconciles to workout totalVolume',
       averageResistance:
-        'Tonal avgWeight is per cable; derived effective resistance accounts for bilateral cable use',
+        'Tonal avgWeight and oneRepMax are reported per-cable values; derivedEstimates contains volume-to-rep arithmetic estimates for total active-cable resistance',
       rangeOfMotion: 'inches when exported as rangeOfMotionInches or romLengthIn',
       strengthScores: 'Tonal score units',
       readiness: 'percentage by muscle group',
     },
     aggregateWorkoutTotals: {
       totalDurationSeconds: sortedActivities.reduce((sum, item) => sum + item.totalDuration, 0),
-      activeDurationSeconds: sortedActivities.reduce((sum, item) => sum + item.activeDuration, 0),
-      restDurationSeconds: sortedActivities.reduce((sum, item) => sum + item.restDuration, 0),
+      activeDurationSeconds: sortedActivities.reduce(
+        (sum, item) => sum + (item.activeDuration ?? 0),
+        0
+      ),
+      restDurationSeconds: sortedActivities.reduce(
+        (sum, item) => sum + (item.restDuration ?? 0),
+        0
+      ),
       totalSets,
       totalReps: sortedActivities.reduce((sum, item) => sum + item.totalReps, 0),
       totalVolumePounds: sortedActivities.reduce((sum, item) => sum + item.totalVolume, 0),
       totalConcentricWork: sortedActivities.reduce(
-        (sum, item) => sum + item.totalConcentricWork,
+        (sum, item) => sum + (item.totalConcentricWork ?? 0),
         0
       ),
     },
@@ -236,8 +534,12 @@ async function main() {
     longitudinalMetrics: {
       dailyMetrics,
       strengthScoreHistory,
-      targetScores,
-      metricScores,
+      targetScores: targetScores === undefined
+        ? undefined
+        : Object.values(targetScores).flat(),
+      metricScores: metricScores === undefined
+        ? undefined
+        : Object.values(metricScores).flat(),
     },
     currentMetrics: {
       muscleReadiness,
@@ -263,12 +565,11 @@ async function main() {
   const outputPath = 'tonal-complete-health-export.json'
   // Keep the complete upload compact. This preserves every field while reducing
   // text-token usage for analysis tools such as ChatGPT.
-  await writeFile(outputPath, `${JSON.stringify(exportData)}\n`, {
-    mode: 0o600,
-  })
+  await writePrivateFile(outputPath, `${JSON.stringify(exportData)}\n`)
 
   const uploadDirectory = 'tonal-chatgpt-export'
   await mkdir(uploadDirectory, { recursive: true, mode: 0o700 })
+  await chmod(uploadDirectory, 0o700)
   const exportRecord = exportData as Record<string, unknown>
   const { workouts: _workouts, ...overview } = exportRecord
   const workoutsByYear = new Map<string, unknown[]>()
@@ -285,20 +586,19 @@ async function main() {
   const workoutFiles = [...workoutsByYear.keys()]
     .sort()
     .map(year => `workouts-${year}.json`)
-  await writeFile(
+  await writePrivateFile(
     `${uploadDirectory}/overview-and-metrics.json`,
     `${JSON.stringify({
       ...overview,
       uploadInstructions:
         'Upload this file together with every file listed in workoutFiles. Treat activity.id as the workout key and movementId as the movement-catalog key.',
       workoutFiles,
-    })}\n`,
-    { mode: 0o600 }
+    })}\n`
   )
 
   await Promise.all(
     [...workoutsByYear.entries()].map(([year, workouts]) =>
-      writeFile(
+      writePrivateFile(
         `${uploadDirectory}/workouts-${year}.json`,
         `${JSON.stringify({
           schemaVersion: 2,
@@ -306,8 +606,7 @@ async function main() {
           year,
           unitsAndInterpretation: exportRecord.unitsAndInterpretation,
           workouts,
-        })}\n`,
-        { mode: 0o600 }
+        })}\n`
       )
     )
   )
@@ -318,7 +617,9 @@ async function main() {
   console.log('This file contains private health information; store and share it carefully.')
 }
 
-main().catch(error => {
-  console.error('Failed to export complete Tonal health history:', error)
-  process.exitCode = 1
-})
+if (process.argv[1] && basename(process.argv[1]) === 'export-complete-health-data.ts') {
+  main().catch(error => {
+    console.error('Failed to export complete Tonal health history:', error)
+    process.exitCode = 1
+  })
+}

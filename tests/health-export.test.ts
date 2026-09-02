@@ -7,6 +7,7 @@ import {
   TonalUserStatistics,
   TonalWorkoutActivity,
 } from '../src'
+import { sanitizeCompleteExport } from '../examples/export-complete-health-data'
 
 function activity(
   id: string,
@@ -98,6 +99,7 @@ const detailedActivity: TonalWorkoutActivity = {
   id: 'newest',
   userId: 'private-user-id',
   workoutId: 'workout-newest',
+  subscriptionId: 'private-subscription-id',
   workoutType: 'Custom',
   timezone: 'America/Chicago',
   beginTime: '2026-01-03T12:00:00.000Z',
@@ -111,33 +113,95 @@ const detailedActivity: TonalWorkoutActivity = {
   totalVolume: 1000,
   totalConcentricWork: 60,
   percentCompleted: 100,
+  completed: true,
+  recoveryWeight: false,
+  hasAppleWatch: false,
+  isFirstWorkoutOfDay: false,
+  isSmartViewActivated: false,
+  mcbServiceVersion: '1.0.0',
   workoutSetActivity: [
     {
       id: 'set-1',
+      userId: 'private-user-id',
+      workoutId: 'workout-newest',
+      workoutActivityID: 'newest',
       movementId: 'movement-1',
       prescribedReps: 10,
       repetition: 1,
       repetitionTotal: 1,
       blockNumber: 1,
-      spotter: true,
-      eccentric: false,
+      blockStart: true,
+      burnout: false,
+      calibration: false,
       chains: false,
+      dropSet: false,
+      eccentric: false,
+      finalSet: true,
       flex: false,
+      practice: false,
+      progressive: false,
+      skipDemo: false,
+      skipSetup: false,
+      spotter: true,
       warmUp: false,
       beginTime: '2026-01-03T12:05:00.000Z',
+      endTime: '2026-01-03T12:05:45.000Z',
+      beginTimeMCB: 1000,
+      endTimeMCB: 1045,
+      duration: 45,
+      durationBasedRepGoal: 0,
       sideNumber: 0,
+      movementSide: 'Bilateral',
+      setGroup: 1,
+      setId: 'workout-set-1',
+      round: 1,
+      weightPercentage: 100,
       avgWeight: 100,
       baseWeight: 95,
       minWeight: 90,
       maxWeight: 110,
+      suggestedWeight: 100,
+      suggestedWeightChange: 0,
+      eccentricWeight: 0,
+      eccentricWeightFrac: 0,
+      chainsWeight: 0,
+      chainsWeightFrac: 0,
+      romWeight: 0,
+      romWeightFrac: 0,
+      romWeightMode: 0,
+      offMachineModifiedWeight: 0,
+      maxSpottedWeight: 0,
       volume: 1000,
+      totalVolume: 2000,
       totalOnMachineVolume: 2000,
+      userWeightPounds: 180,
       repCount: 10,
+      cvRepCount: 10,
       repsInReserve: 2,
       oneRepMax: 133,
+      avgRom: 24,
+      rom: 240,
       romLengthIn: 24,
-      duration: 45,
+      meanMaxPos: 24,
+      avgVelocity: 1,
+      isoModeSpeed: 0,
+      concentricWork: 60,
+      totalConcentricWork: 60,
+      totalConDuration: 20,
       maxConPower: 250,
+      velAtMaxConPower: 1,
+      weightAtMaxConPower: 100,
+      inconsistencyScore: 0,
+      strugglingScore: 0,
+      durationInconsistencyScore: 0,
+      durationStrugglingScore: 0,
+      maxVelInconsistencyScore: 0,
+      maxVelStrugglingScore: 0,
+      romInconsistencyScore: 0,
+      romStrugglingScore: 0,
+      inchesUpdated: true,
+      powerUpdated: true,
+      spotterMode: 'Off',
     },
   ],
 }
@@ -273,6 +337,27 @@ describe('buildHealthExport', () => {
     expect(result.activities.map(item => item.activityId)).toEqual(['middle'])
   })
 
+  it('filters date-only ranges by the workout local calendar day', () => {
+    const lateEvening = activity('late-evening', '2026-01-03T05:30:00.000Z', {
+      localTimestamp: '2026-01-02T23:30:00.000-06:00',
+      timeZone: 'America/Chicago',
+    })
+
+    const localDay = buildHealthExport(
+      { activities: [lateEvening] },
+      { startDate: '2026-01-02', endDate: '2026-01-02' }
+    )
+    const adjacentUtcDay = buildHealthExport(
+      { activities: [lateEvening] },
+      { startDate: '2026-01-03', endDate: '2026-01-03' }
+    )
+
+    expect(localDay.activities.map(item => item.activityId)).toEqual([
+      'late-evening',
+    ])
+    expect(adjacentUtcDay.activities).toEqual([])
+  })
+
   it('does not expose user, device, or application identifiers', () => {
     const result = buildHealthExport(source)
     const serialized = JSON.stringify(result)
@@ -280,6 +365,41 @@ describe('buildHealthExport', () => {
     expect(serialized).not.toContain('private-user-id')
     expect(serialized).not.toContain('private-device-id')
     expect(serialized).not.toContain('1.2.3')
+  })
+
+  it('allowlists complete-export fields instead of leaking profile data', () => {
+    const sanitized = sanitizeCompleteExport({
+      workouts: [
+        {
+          activity: {
+            id: 'activity-1',
+            totalReps: 10,
+            email: 'private@example.com',
+            firstName: 'Private',
+            lastName: 'Person',
+            gender: 'PRIVATE',
+            heightInches: 70,
+            weightPounds: 180,
+            auth0Id: 'auth0|private',
+          },
+        },
+      ],
+      userInfo: {
+        id: 'private-user-id',
+        email: 'private@example.com',
+      },
+    })
+
+    expect(sanitized).toEqual({
+      workouts: [
+        {
+          activity: {
+            id: 'activity-1',
+            totalReps: 10,
+          },
+        },
+      ],
+    })
   })
 
   it('adds movement names and performed set details when supplied', () => {
@@ -307,10 +427,12 @@ describe('buildHealthExport', () => {
           baseResistancePerCablePounds: 95,
           minimumResistancePerCablePounds: 90,
           maximumResistancePerCablePounds: 110,
-          effectiveAverageResistancePounds: 200,
           totalVolumePounds: 2000,
           estimatedOneRepMaxPerCablePounds: 133,
-          effectiveEstimatedOneRepMaxPounds: 266,
+          derivedEstimates: {
+            averageResistancePounds: 200,
+            oneRepMaxPounds: 266,
+          },
           rangeOfMotionInches: 24,
           durationSeconds: 45,
           repsInReserve: 2,
@@ -319,6 +441,13 @@ describe('buildHealthExport', () => {
         },
       ],
     })
+
+    expect(result.activities[0].sets?.[0]).not.toHaveProperty(
+      'effectiveAverageResistancePounds'
+    )
+    expect(result.activities[0].sets?.[0]).not.toHaveProperty(
+      'effectiveEstimatedOneRepMaxPounds'
+    )
   })
 
   it.each([

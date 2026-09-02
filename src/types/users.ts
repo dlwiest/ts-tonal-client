@@ -229,6 +229,18 @@ export type TonalStrengthBodyRegion =
   | 'Overall'
   | string
 
+export interface TonalStrengthFamilyScore {
+  id: string
+  createdAt: string
+  updatedAt: string
+  userId: string
+  workoutActivityId: string
+  strengthFamily: string
+  strengthBodyRegion: string
+  score: number
+  current: boolean
+}
+
 export interface TonalStrengthScore {
   id: string
   createdAt: string
@@ -239,7 +251,7 @@ export interface TonalStrengthScore {
   bodyRegionDisplay: string
   score: number
   current: boolean
-  familyActivity?: unknown[]
+  familyActivity?: TonalStrengthFamilyScore[]
 }
 
 export interface TonalStrengthScoreHistoryEntry {
@@ -506,43 +518,6 @@ export interface TonalMetricScore {
 export interface TonalMetricScoresResponse {
   [metricId: string]: TonalMetricScore[] // Organized by metric ID, each containing weekly actual scores
 }
-
-export interface TonalStrengthFamilyScore {
-  id: string
-  createdAt: string
-  updatedAt: string
-  userId: string
-  workoutActivityId: string
-  strengthFamily: string
-  strengthBodyRegion: string
-  score: number
-  current: boolean
-}
-
-export interface TonalCurrentStrengthScore {
-  id: string
-  createdAt: string
-  updatedAt: string
-  userId: string
-  workoutActivityId: string
-  strengthBodyRegion: string
-  bodyRegionDisplay: string
-  score: number
-  current: boolean
-  familyActivity: TonalStrengthFamilyScore[]
-}
-
-export interface TonalStrengthScoreHistory {
-  id: string
-  userId: string
-  workoutActivityId: string
-  upper: number
-  lower: number
-  core: number
-  overall: number
-  activityTime: string
-}
-
 
 export interface TonalUserInfo {
   id: string

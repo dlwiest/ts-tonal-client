@@ -6,3 +6,4 @@ tonal-health-export.json
 tonal-complete-health-export.json
 tonal-chatgpt-export/
 .cache/
+rollup.config-*.cjs

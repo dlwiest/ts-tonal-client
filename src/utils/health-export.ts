@@ -11,11 +11,16 @@ import {
   TonalWorkoutSetActivity,
 } from '../types'
 
+interface DateBoundary {
+  timestamp: number
+  localDate?: string
+}
+
 function parseDate(
   value: string | Date | undefined,
   fieldName: string,
   endOfDay: boolean = false
-): number | undefined {
+): DateBoundary | undefined {
   if (value === undefined) {
     return undefined
   }
@@ -26,7 +31,33 @@ function parseDate(
   }
 
   const isDateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-  return endOfDay && isDateOnly ? timestamp + 24 * 60 * 60 * 1000 - 1 : timestamp
+  return {
+    timestamp: endOfDay && isDateOnly ? timestamp + 24 * 60 * 60 * 1000 - 1 : timestamp,
+    localDate: isDateOnly ? value : undefined,
+  }
+}
+
+function getActivityLocalDate(activity: TonalActivitySummary): string | undefined {
+  const localTimestampDate = /^(\d{4}-\d{2}-\d{2})T/.exec(
+    activity.localTimestamp
+  )?.[1]
+
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: activity.timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date(activity.timestamp))
+    const partValues = Object.fromEntries(parts.map(part => [part.type, part.value]))
+    if (partValues.year && partValues.month && partValues.day) {
+      return `${partValues.year}-${partValues.month}-${partValues.day}`
+    }
+  } catch {
+    // Fall back to Tonal's local timestamp when a historical time zone is unavailable.
+  }
+
+  return localTimestampDate
 }
 
 function mapSetActivity(
@@ -34,19 +65,26 @@ function mapSetActivity(
   movement?: TonalMovement
 ): TonalHealthExportSet {
   const totalVolume = set.totalOnMachineVolume ?? set.volume
-  const effectiveAverageResistance =
+  const estimatedAverageResistance =
     set.repCount !== undefined &&
     set.repCount > 0 &&
     totalVolume !== undefined &&
     totalVolume > 0
       ? totalVolume / set.repCount
       : undefined
-  const effectiveOneRepMax =
+  const estimatedOneRepMax =
     set.oneRepMax !== undefined &&
     set.avgWeight !== undefined &&
     set.avgWeight > 0 &&
-    effectiveAverageResistance !== undefined
-      ? set.oneRepMax * (effectiveAverageResistance / set.avgWeight)
+    estimatedAverageResistance !== undefined
+      ? set.oneRepMax * (estimatedAverageResistance / set.avgWeight)
+      : undefined
+  const derivedEstimates =
+    estimatedAverageResistance !== undefined || estimatedOneRepMax !== undefined
+      ? {
+          averageResistancePounds: estimatedAverageResistance,
+          oneRepMaxPounds: estimatedOneRepMax,
+        }
       : undefined
 
   return {
@@ -60,28 +98,25 @@ function mapSetActivity(
     beginTime: set.beginTime,
     endTime: set.endTime,
     durationSeconds: set.duration,
-    prescribedReps: set.prescribedReps,
-    prescribedDurationSeconds: set.prescribedDuration,
+    prescribedReps: set.prescribedReps ?? undefined,
+    prescribedDurationSeconds: set.prescribedDuration ?? undefined,
     completedReps: set.repCount,
-    repsInReserve: set.repsInReserve,
-    repetition: set.repetition,
-    repetitionTotal: set.repetitionTotal,
-    sideNumber: set.sideNumber,
+    repsInReserve: set.repsInReserve ?? undefined,
+    repetition: set.repetition ?? undefined,
+    repetitionTotal: set.repetitionTotal ?? undefined,
+    sideNumber: set.sideNumber ?? undefined,
     movementSide: set.movementSide,
     averageResistancePerCablePounds: set.avgWeight,
-    baseResistancePerCablePounds: set.baseWeight,
+    baseResistancePerCablePounds: set.baseWeight ?? undefined,
     minimumResistancePerCablePounds: set.minWeight,
     maximumResistancePerCablePounds: set.maxWeight,
-    effectiveAverageResistancePounds: effectiveAverageResistance,
     totalVolumePounds: totalVolume,
     estimatedOneRepMaxPerCablePounds: set.oneRepMax,
-    effectiveEstimatedOneRepMaxPounds: effectiveOneRepMax,
+    derivedEstimates,
     rangeOfMotionInches: set.romLengthIn,
-    resistanceLevel: set.resistanceLevel,
-    suggestedResistanceLevel: set.suggestedResistanceLevel,
     maxConcentricPowerWatts: set.maxConPower,
     warmUp: set.warmUp,
-    spotter: set.spotter,
+    spotter: set.spotter ?? undefined,
     eccentric: set.eccentric,
     chains: set.chains,
     flex: set.flex,
@@ -117,9 +152,9 @@ function mapActivity(
 
   if (detail !== undefined) {
     exported.totalSets = detail.totalSets
-    exported.activeDurationSeconds = detail.activeDuration
-    exported.restDurationSeconds = detail.restDuration
-    exported.percentCompleted = detail.percentCompleted
+    exported.activeDurationSeconds = detail.activeDuration ?? undefined
+    exported.restDurationSeconds = detail.restDuration ?? undefined
+    exported.percentCompleted = detail.percentCompleted ?? undefined
     exported.sets = (detail.workoutSetActivity ?? []).map(set =>
       mapSetActivity(set, movements.get(set.movementId))
     )
@@ -145,11 +180,10 @@ export function buildHealthExport(
   if (
     startTimestamp !== undefined &&
     endTimestamp !== undefined &&
-    startTimestamp > endTimestamp
+    startTimestamp.timestamp > endTimestamp.timestamp
   ) {
     throw new TonalClientError('startDate must be before or equal to endDate')
   }
-
   if (
     options.limit !== undefined &&
     (!Number.isInteger(options.limit) || options.limit <= 0)
@@ -167,12 +201,27 @@ export function buildHealthExport(
   const activities = source.activities
     .filter(activity => {
       const timestamp = Date.parse(activity.timestamp)
+      const localDate =
+        startTimestamp?.localDate !== undefined || endTimestamp?.localDate !== undefined
+          ? getActivityLocalDate(activity)
+          : undefined
+      const afterStart =
+        startTimestamp === undefined ||
+        (startTimestamp.localDate !== undefined
+          ? localDate !== undefined && localDate >= startTimestamp.localDate
+          : timestamp >= startTimestamp.timestamp)
+      const beforeEnd =
+        endTimestamp === undefined ||
+        (endTimestamp.localDate !== undefined
+          ? localDate !== undefined && localDate <= endTimestamp.localDate
+          : timestamp <= endTimestamp.timestamp)
+
       return (
         (options.includeExternalActivities === true ||
           activity.activityType === 'Internal') &&
         !Number.isNaN(timestamp) &&
-        (startTimestamp === undefined || timestamp >= startTimestamp) &&
-        (endTimestamp === undefined || timestamp <= endTimestamp)
+        afterStart &&
+        beforeEnd
       )
     })
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))

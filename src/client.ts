@@ -31,12 +31,16 @@ import {
   TonalMetricScoresResponse,
   TonalHealthExport,
   TonalHealthExportOptions,
+  TonalStrengthScore,
+  TonalStrengthScoreHistoryEntry,
+  TonalStrengthScoreHistoryLookback,
   TonalWorkoutActivity,
   TonalFormattedWorkoutSummary,
-  TonalCurrentStrengthScore,
-  TonalStrengthScoreHistory,
+  TonalClientError,
 } from './types'
 import { buildHealthExport } from './utils/health-export'
+
+const MAX_WORKOUT_ACTIVITY_PAGES = 1000
 
 export class TonalClient {
   private authManager: AuthManager
@@ -195,43 +199,17 @@ export class TonalClient {
     return this.userService.getWorkoutActivities(userInfo.id, offset, limit)
   }
 
-  /**
-   * Get one completed workout with performed set, rep, and weight details.
-   */
-  async getWorkoutActivityById(activityId: string): Promise<TonalWorkoutActivity> {
-    const userInfo = await this.getUserInfo()
-    return this.userService.getWorkoutActivityById(userInfo.id, activityId)
-  }
-
   /** Get every completed Tonal workout activity using paginated requests. */
   async getAllWorkoutActivities(pageSize: number = 100): Promise<TonalWorkoutActivity[]> {
     if (!Number.isInteger(pageSize) || pageSize <= 0 || pageSize > 100) {
-      throw new Error('Page size must be an integer between 1 and 100')
+      throw new TonalClientError('Page size must be an integer between 1 and 100')
     }
 
-    const userInfo = await this.getUserInfo()
     const activities: TonalWorkoutActivity[] = []
-    const seenIds = new Set<string>()
-
-    for (let offset = 0; ; offset += pageSize) {
-      const page = await this.userService.getWorkoutActivities(
-        userInfo.id,
-        offset,
-        pageSize
-      )
-
-      for (const activity of page) {
-        if (!seenIds.has(activity.id)) {
-          seenIds.add(activity.id)
-          activities.push(activity)
-        }
-      }
-
-      if (page.length < pageSize) {
-        break
-      }
-    }
-
+    await this.paginateWorkoutActivities(pageSize, page => {
+      activities.push(...page)
+      return false
+    })
     return activities
   }
 
@@ -264,18 +242,6 @@ export class TonalClient {
     }
 
     return summaries
-  }
-
-  async getCurrentStrengthScores(): Promise<TonalCurrentStrengthScore[]> {
-    const userInfo = await this.getUserInfo()
-    return this.userService.getCurrentStrengthScores(userInfo.id)
-  }
-
-  async getStrengthScoreHistory(
-    limit: number = 1000
-  ): Promise<TonalStrengthScoreHistory[]> {
-    const userInfo = await this.getUserInfo()
-    return this.userService.getStrengthScoreHistory(userInfo.id, limit)
   }
 
   async getUserStatistics(): Promise<TonalUserStatistics> {
@@ -369,31 +335,65 @@ export class TonalClient {
     )
   }
 
-  private async getWorkoutActivityDetails(
-    activityIds: string[]
-  ): Promise<TonalWorkoutActivity[]> {
-    const pageSize = 100
-    const requestedIds = new Set(activityIds)
-    const details: TonalWorkoutActivity[] = []
+  private async paginateWorkoutActivities(
+    pageSize: number,
+    visitActivities: (activities: TonalWorkoutActivity[]) => boolean
+  ): Promise<void> {
     const userInfo = await this.getUserInfo()
+    const seenIds = new Set<string>()
 
-    for (let offset = 0; requestedIds.size > 0; offset += pageSize) {
+    for (let pageNumber = 0, offset = 0; ; pageNumber += 1) {
       const page = await this.userService.getWorkoutActivities(
         userInfo.id,
         offset,
         pageSize
       )
+      const newActivities = page.filter(activity => {
+        if (seenIds.has(activity.id)) {
+          return false
+        }
+        seenIds.add(activity.id)
+        return true
+      })
 
-      for (const activity of page) {
+      if (visitActivities(newActivities) || page.length < pageSize) {
+        return
+      }
+      if (newActivities.length === 0) {
+        throw new TonalClientError(
+          `Workout activity pagination did not advance at offset ${offset}`
+        )
+      }
+      if (pageNumber + 1 >= MAX_WORKOUT_ACTIVITY_PAGES) {
+        throw new TonalClientError(
+          `Workout activity pagination exceeded the ${MAX_WORKOUT_ACTIVITY_PAGES}-page safety limit`
+        )
+      }
+
+      const nextOffset = offset + pageSize
+      if (!Number.isSafeInteger(nextOffset) || nextOffset <= offset) {
+        throw new TonalClientError(
+          `Workout activity pagination could not advance beyond offset ${offset}`
+        )
+      }
+      offset = nextOffset
+    }
+  }
+
+  private async getWorkoutActivityDetails(
+    activityIds: string[]
+  ): Promise<TonalWorkoutActivity[]> {
+    const requestedIds = new Set(activityIds)
+    const details: TonalWorkoutActivity[] = []
+
+    await this.paginateWorkoutActivities(100, activities => {
+      for (const activity of activities) {
         if (requestedIds.delete(activity.id)) {
           details.push(activity)
         }
       }
-
-      if (page.length < pageSize) {
-        break
-      }
-    }
+      return requestedIds.size === 0
+    })
 
     return details
   }

@@ -1,6 +1,7 @@
 import { createHash } from 'crypto'
 import { HttpClient } from '../http/http-client'
-import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalWorkoutActivity, TonalFormattedWorkoutSummary, TonalCurrentStrengthScore, TonalStrengthScoreHistory, TonalClientError } from '../types'
+import { TonalUserInfo, TonalGoal, TonalTrainingEffectGoalsResponse, TonalTrainingType, TonalGoalMetric, TonalDeviceRegistration, TonalUserDevice, TonalUserPermissions, TonalUserSettings, TonalDailyMetrics, TonalCurrentStreak, TonalActivitySummary, TonalUserStatistics, TonalAchievementStats, TonalEarnedAchievement, TonalHomeCalendar, TonalMuscleReadiness, TonalProgram, TonalTargetScoresResponse, TonalMetricScoresResponse, TonalStrengthScore, TonalStrengthScoreHistoryEntry, TonalWorkoutActivity, TonalFormattedWorkoutSummary, TonalClientError } from '../types'
+import { CacheManager } from '../utils/cache-manager'
 
 export class UserService {
   private cacheManager: CacheManager
@@ -147,6 +148,7 @@ export class UserService {
       throw new TonalClientError('Limit must be an integer between 1 and 100')
     }
 
+    // Verified live: this endpoint uses pg-* headers, unlike /user-workouts.
     return this.httpClient.request(`/users/${userId}/workout-activities`, {
       method: 'GET',
       headers: {
@@ -156,46 +158,17 @@ export class UserService {
     })
   }
 
-  async getWorkoutActivityById(
-    userId: string,
-    activityId: string
-  ): Promise<TonalWorkoutActivity> {
-    if (!activityId?.trim()) {
-      throw new TonalClientError('Workout activity ID is required')
-    }
-
-    return this.httpClient.request(
-      `/users/${userId}/workout-activities/${encodeURIComponent(activityId)}`
-    )
-  }
-
   async getFormattedWorkoutSummary(
     userId: string,
     activityId: string
   ): Promise<TonalFormattedWorkoutSummary> {
-    if (!activityId?.trim()) {
+    const canonicalActivityId = activityId.trim()
+    if (!canonicalActivityId) {
       throw new TonalClientError('Workout activity ID is required')
     }
 
     return this.httpClient.request(
-      `/formatted/users/${userId}/workout-summaries/${encodeURIComponent(activityId)}`
-    )
-  }
-
-  async getCurrentStrengthScores(userId: string): Promise<TonalCurrentStrengthScore[]> {
-    return this.httpClient.request(`/users/${userId}/strength-scores/current`)
-  }
-
-  async getStrengthScoreHistory(
-    userId: string,
-    limit: number = 1000
-  ): Promise<TonalStrengthScoreHistory[]> {
-    if (!Number.isInteger(limit) || limit <= 0) {
-      throw new TonalClientError('Strength score history limit must be a positive integer')
-    }
-
-    return this.httpClient.request(
-      `/users/${userId}/strength-scores/history?limit=${limit}`
+      `/users/${userId}/workout-summaries/${encodeURIComponent(canonicalActivityId)}`
     )
   }
 

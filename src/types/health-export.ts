@@ -30,42 +30,52 @@ export interface TonalHealthExportOptions {
   includeSetDetails?: boolean
 }
 
+export interface TonalHealthExportSetEstimates {
+  /**
+   * Estimated total resistance across active cables, calculated as Tonal's
+   * reported total on-machine volume divided by completed reps.
+   */
+  averageResistancePounds?: number
+  /**
+   * Estimated total one-rep max, scaled from Tonal's reported per-cable
+   * one-rep max by the estimated total resistance.
+   */
+  oneRepMaxPounds?: number
+}
+
 export interface TonalHealthExportSet {
-  setActivityId: string
+  setActivityId?: string
   movementId: string
   movementName?: string
   muscleGroups?: string[]
   accessory?: string
   bilateral?: boolean
   twoSided?: boolean
-  beginTime: string
+  beginTime?: string
   endTime?: string
   durationSeconds?: number
   prescribedReps?: number
   prescribedDurationSeconds?: number
   completedReps?: number
   repsInReserve?: number
-  repetition: number
-  repetitionTotal: number
-  sideNumber: number
+  repetition?: number
+  repetitionTotal?: number
+  sideNumber?: number
   movementSide?: string
   averageResistancePerCablePounds?: number
   baseResistancePerCablePounds?: number
   minimumResistancePerCablePounds?: number
   maximumResistancePerCablePounds?: number
-  effectiveAverageResistancePounds?: number
   totalVolumePounds?: number
   estimatedOneRepMaxPerCablePounds?: number
-  effectiveEstimatedOneRepMaxPounds?: number
+  derivedEstimates?: TonalHealthExportSetEstimates
   rangeOfMotionInches?: number
-  resistanceLevel?: number
-  suggestedResistanceLevel?: number
   maxConcentricPowerWatts?: number
-  warmUp: boolean
-  spotter: boolean
-  eccentric: boolean
-  chains: boolean
-  flex: boolean
+  warmUp?: boolean
+  spotter?: boolean
+  eccentric?: boolean
+  chains?: boolean
+  flex?: boolean
 }
 
 export interface TonalHealthExportActivity {

@@ -236,7 +236,8 @@ private health and workout information, so store and share it carefully.
 
 Available options:
 
-- `startDate` and `endDate`: include activities within an ISO-8601 date range
+- `startDate` and `endDate`: include activities within an ISO-8601 range;
+  date-only values use each workout's local calendar day
 - `limit`: include at most this many activities, newest first
 - `includeMuscleReadiness`: include current readiness data (default: `true`)
 - `includeLifetimeStatistics`: include lifetime aggregate data (default: `true`)
@@ -245,13 +246,14 @@ Available options:
 - `includeSetDetails`: fetch performed sets, reps, weights, movement names, and
   one-rep-max estimates from paginated workout activity data (default: `false`)
 
-Set details distinguish `averageResistancePerCablePounds` from
-`effectiveAverageResistancePounds`. For a bilateral two-cable movement, the
-effective resistance is commonly twice the per-cable value. Set
-`totalVolumePounds` uses Tonal's `totalOnMachineVolume`, which reconciles with
-the completed workout's total volume. One-rep-max estimates follow the same
-pattern: the export preserves Tonal's per-cable estimate and provides an
-effective estimate scaled to the movement's effective resistance.
+Set details keep Tonal's reported per-cable values in
+`averageResistancePerCablePounds` and
+`estimatedOneRepMaxPerCablePounds`. Arithmetic derived from total volume and
+completed reps is separated under `derivedEstimates`, with
+`averageResistancePounds` and `oneRepMaxPounds` explicitly documented as
+estimates rather than measured values. `totalVolumePounds` uses Tonal's
+`totalOnMachineVolume`, which reconciles with the completed workout's total
+volume.
 
 Detailed completed workouts are also available directly:
 
@@ -259,9 +261,21 @@ Detailed completed workouts are also available directly:
 // Get a page of completed activities with performed set data
 const activities = await client.getWorkoutActivities(0, 100)
 
+// Get every activity, with duplicate-page and page-cap safety checks
+const completeHistory = await client.getAllWorkoutActivities()
+
 // Get one completed activity by its activity ID
 const activity = await client.getWorkoutActivityById('activity-uuid')
 console.log(activity.workoutSetActivity)
+
+// Get the summary returned for one activity
+const summary = await client.getFormattedWorkoutSummary('activity-uuid')
+
+// Get summaries in bounded request batches
+const summaries = await client.getFormattedWorkoutSummaries(
+  completeHistory.map(item => item.id),
+  5
+)
 ```
 
 ### Complete History Export
