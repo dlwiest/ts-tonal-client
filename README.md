@@ -271,6 +271,10 @@ console.log(activity.workoutSetActivity)
 
 // Get the summary returned for one activity
 const summary = await client.getFormattedWorkoutSummary('activity-uuid')
+console.log(summary.timeUnderTension)
+for (const movement of summary.movementSets) {
+  console.log(movement.movementName, movement.reps, movement.sets)
+}
 
 // Get summaries in bounded request batches
 const summaries = await client.getFormattedWorkoutSummaries(
@@ -278,6 +282,11 @@ const summaries = await client.getFormattedWorkoutSummaries(
   5
 )
 ```
+
+Formatted summaries include the complete per-movement breakdown in
+`movementSets`, along with workout totals such as `timeUnderTension`,
+`totalReps`, `totalVolume`, and `totalWork`. Fields that Tonal only returns for
+some workouts, including `coachName` and program identifiers, are optional.
 
 ### Complete History Export
 

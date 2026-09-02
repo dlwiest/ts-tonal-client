@@ -211,26 +211,98 @@ export interface TonalWorkoutActivity {
 }
 
 /**
+ * A set within a formatted workout movement summary.
+ *
+ * The API's set field names are known, but their individual presence and value
+ * types have not been measured. Keep the payload open rather than claiming
+ * unsupported required fields.
+ */
+export type TonalFormattedWorkoutSet = Record<string, unknown>
+
+/**
+ * Per-movement breakdown returned in a formatted workout summary.
+ */
+export interface TonalFormattedWorkoutMovementSet {
+  assetId: string
+  avgWeight: number
+  bilateralMovementMetrics?: Record<string, unknown>
+  blockNumber: number
+  countReps: boolean
+  description: string
+  genericMovement: boolean
+  isInactiveMovement?: boolean
+  movementId: string
+  movementMetricsDiff?: Record<string, unknown>
+  movementMetricsSide1?: Record<string, unknown>
+  movementMetricsSide2?: Record<string, unknown>
+  movementName: string
+  offMachine: boolean
+  reps: number
+  setGroup: number
+  sets: TonalFormattedWorkoutSet[]
+  timeTensionIndex: number
+  totalOnMachineVolume: number
+  totalVolume: number
+  totalWork: number
+}
+
+/**
  * Workout summary returned by
  * GET /users/{userId}/workout-summaries/{activityId}.
  */
 export interface TonalFormattedWorkoutSummary {
-  id: string
-  deletedAt: string | null
-  userId: string
-  name: string
-  workoutId: string
-  isInProgram: boolean
-  isGuidedWorkout: boolean
-  isBaselineWorkout: boolean
-  timestamp: string
   UTCTimestamp: string
-  localTimestamp: string
-  endTime: string
-  timeZone: string
-  assetID?: string | null
-  targetArea: string
+  activityType: string
+  appVersion: string
+  assetID?: string
+  calories: unknown[]
+  coachName?: string
+  completed: boolean
+  deletedAt: string | null
+  deviceId: string
   duration: number
+  endTime: string
+  goalIds?: unknown[]
+  groupIds: string[]
+  id: string
+  isBaselineWorkout: boolean
+  isGuidedWorkout: boolean
+  isInProgram: boolean
+  lastWorkoutSummary?: Record<string, unknown>
+  level: string
+  localTimestamp: string
+  movementAdvancedMetrics: unknown[]
+  movementSets: TonalFormattedWorkoutMovementSet[]
+  name: string
+  primaryTrainingTypeName?: string
+  programDay?: number
+  programEnrollmentId?: string
+  programId?: string
+  programName?: string
+  programWeek?: number
+  programWeeks: number
+  programWorkoutId?: string
+  programWorkoutsPerWeek: number
+  /**
+   * Numeric in all 422 observed formatted summaries (0 nulls); all 50 observed
+   * TonalActivitySummary values were null.
+   */
+  repGoalPercentage: number
+  targetArea: string
+  tileChips?: unknown[]
+  timeUnderTension: number
+  timeZone: string
+  timestamp: string
+  totalReps: number
+  totalVolume: number
+  totalWork: number
+  trainingTypeIds?: unknown[]
+  triggeredTimedWeightOff: boolean
+  userAchievements?: unknown[]
+  userId: string
+  workoutId: string
+  workoutNumber?: number
+  workoutType: string
 }
 
 export interface TonalSharedWorkout {
