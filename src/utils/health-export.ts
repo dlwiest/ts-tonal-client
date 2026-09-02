@@ -7,6 +7,8 @@ import {
   TonalHealthExportSet,
   TonalHealthExportSource,
   TonalMovement,
+  TonalMuscleReadiness,
+  TonalUserStatistics,
   TonalWorkoutActivity,
   TonalWorkoutSetActivity,
 } from '../types'
@@ -25,28 +27,22 @@ function parseDate(
     return undefined
   }
 
-  const dateOnlyMatch =
-    typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null
-  if (dateOnlyMatch !== null) {
-    const year = Number(dateOnlyMatch[1])
-    const month = Number(dateOnlyMatch[2])
-    const day = Number(dateOnlyMatch[3])
-    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
-    const daysInMonth = [
-      31,
-      leapYear ? 29 : 28,
-      31,
-      30,
-      31,
-      30,
-      31,
-      31,
-      30,
-      31,
-      30,
-      31,
-    ]
-    if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) {
+  const calendarDateMatch =
+    typeof value === 'string'
+      ? /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(value)
+      : null
+  if (calendarDateMatch !== null) {
+    const year = Number(calendarDateMatch[1])
+    const month = Number(calendarDateMatch[2])
+    const day = Number(calendarDateMatch[3])
+    const roundTrip = new Date(0)
+    roundTrip.setUTCHours(0, 0, 0, 0)
+    roundTrip.setUTCFullYear(year, month - 1, day)
+    if (
+      roundTrip.getUTCFullYear() !== year ||
+      roundTrip.getUTCMonth() !== month - 1 ||
+      roundTrip.getUTCDate() !== day
+    ) {
       throw new TonalClientError(`${fieldName} must be a valid ISO-8601 date or timestamp`)
     }
   }
@@ -56,10 +52,11 @@ function parseDate(
     throw new TonalClientError(`${fieldName} must be a valid ISO-8601 date or timestamp`)
   }
 
-  const isDateOnly = dateOnlyMatch !== null
+  const isDateOnly =
+    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
   return {
     timestamp: endOfDay && isDateOnly ? timestamp + 24 * 60 * 60 * 1000 - 1 : timestamp,
-    localDate: isDateOnly ? value as string : undefined,
+    localDate: isDateOnly ? value : undefined,
   }
 }
 
@@ -189,6 +186,62 @@ function mapActivity(
   return exported
 }
 
+function sanitizeMuscleReadiness(
+  readiness: TonalMuscleReadiness
+): TonalMuscleReadiness {
+  return {
+    Chest: readiness.Chest,
+    Shoulders: readiness.Shoulders,
+    Back: readiness.Back,
+    Triceps: readiness.Triceps,
+    Biceps: readiness.Biceps,
+    Abs: readiness.Abs,
+    Obliques: readiness.Obliques,
+    Quads: readiness.Quads,
+    Glutes: readiness.Glutes,
+    Hamstrings: readiness.Hamstrings,
+    Calves: readiness.Calves,
+  }
+}
+
+function sanitizeLifetimeStatistics(
+  statistics: TonalUserStatistics
+): TonalUserStatistics {
+  return {
+    volume: {
+      total: statistics.volume.total,
+      maxVolumeInWorkout: statistics.volume.maxVolumeInWorkout,
+      maxVolumeInAWeek: statistics.volume.maxVolumeInAWeek,
+      avgVolumePerWorkout: statistics.volume.avgVolumePerWorkout,
+      avgVolumePerWeek: statistics.volume.avgVolumePerWeek,
+    },
+    workouts: {
+      total: statistics.workouts.total,
+      maxWorkoutDuration: statistics.workouts.maxWorkoutDuration,
+      avgWorkoutDuration: statistics.workouts.avgWorkoutDuration,
+      totalDuration: statistics.workouts.totalDuration,
+      totalTimeUnderTension: statistics.workouts.totalTimeUnderTension,
+      maxWorkoutsPerWeek: statistics.workouts.maxWorkoutsPerWeek,
+      avgWorkoutsPerWeek: statistics.workouts.avgWorkoutsPerWeek,
+      totalFreeliftWorkouts: statistics.workouts.totalFreeliftWorkouts,
+      totalCustomWorkouts: statistics.workouts.totalCustomWorkouts,
+    },
+    movements: {
+      total: statistics.movements.total,
+      movementIds: statistics.movements.movementIds.filter(
+        movementId => typeof movementId === 'string'
+      ),
+    },
+    programs: {
+      total: statistics.programs.total,
+      totalProgramVolume: statistics.programs.totalProgramVolume,
+      totalProgramWorkouts: statistics.programs.totalProgramWorkouts,
+      totalDuration: statistics.programs.totalDuration,
+      programSummaries: null,
+    },
+  }
+}
+
 /**
  * Build a compact, privacy-conscious health export from Tonal API data.
  *
@@ -290,10 +343,12 @@ export function buildHealthExport(
   }
 
   if (source.muscleReadiness !== undefined) {
-    exportData.muscleReadiness = source.muscleReadiness
+    exportData.muscleReadiness = sanitizeMuscleReadiness(source.muscleReadiness)
   }
   if (source.lifetimeStatistics !== undefined) {
-    exportData.lifetimeStatistics = source.lifetimeStatistics
+    exportData.lifetimeStatistics = sanitizeLifetimeStatistics(
+      source.lifetimeStatistics
+    )
   }
 
   return exportData

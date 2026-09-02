@@ -386,6 +386,44 @@ describe('buildHealthExport', () => {
     expect(serialized).not.toContain('1.2.3')
   })
 
+  it('allowlists compact readiness and lifetime aggregates recursively', () => {
+    const taintedStatistics = {
+      ...statistics,
+      email: 'private@example.com',
+      volume: {
+        ...statistics.volume,
+        accountPath: '/Users/private/.env',
+      },
+      programs: {
+        ...statistics.programs,
+        programSummaries: {
+          userId: 'private-user-id',
+          profile: { email: 'private@example.com' },
+        },
+        authToken: 'private-token',
+      },
+    } as TonalUserStatistics
+    const taintedReadiness = {
+      ...readiness,
+      email: 'private@example.com',
+    } as TonalMuscleReadiness
+
+    const result = buildHealthExport({
+      activities: [],
+      muscleReadiness: taintedReadiness,
+      lifetimeStatistics: taintedStatistics,
+    })
+    const serialized = JSON.stringify(result)
+
+    expect(result.muscleReadiness).toEqual(readiness)
+    expect(result.lifetimeStatistics).toEqual(statistics)
+    expect(result.lifetimeStatistics?.programs.programSummaries).toBeNull()
+    expect(serialized).not.toContain('private@example.com')
+    expect(serialized).not.toContain('private-user-id')
+    expect(serialized).not.toContain('/Users/private/.env')
+    expect(serialized).not.toContain('private-token')
+  })
+
   it('allowlists complete-export associations without leaking profile data or weight', () => {
     const sanitized = sanitizeCompleteExport({
       workouts: [
@@ -501,6 +539,8 @@ describe('buildHealthExport', () => {
     [{ startDate: 'not-a-date' }, 'startDate must be a valid'],
     [{ startDate: '2026-02-30' }, 'startDate must be a valid'],
     [{ endDate: '2025-02-29' }, 'endDate must be a valid'],
+    [{ startDate: '2026-02-30T12:00:00.000Z' }, 'startDate must be a valid'],
+    [{ endDate: '2025-02-29T23:59:59.999Z' }, 'endDate must be a valid'],
     [{ endDate: 'not-a-date' }, 'endDate must be a valid'],
     [{ limit: 0 }, 'limit must be a positive integer'],
     [{ limit: 1.5 }, 'limit must be a positive integer'],
