@@ -74,49 +74,60 @@ export class AuthManager {
     return this.idToken
   }
 
+  // `expiresInDeadline` may be NaN: OAuthTokenResponse declares `expires_in` as required,
+  // but that same interface declared `refresh_token` required until Auth0 was observed
+  // omitting it, so the field is not trustworthy. A NaN deadline must never reach
+  // `tokenExpiresAt` -- `isTokenValid()` compares against it and would return false
+  // forever, refreshing on every single call.
   private getTokenExpiresAt(idToken: string | undefined, expiresInDeadline: number): number {
+    const expiresInUsable = Number.isFinite(expiresInDeadline)
+    // Neither source usable: a short finite window beats NaN, which would spin the
+    // refresh grant on every request and invite Auth0 rate limiting.
+    const noInfoFallback = expiresInUsable ? expiresInDeadline : Date.now() + 10 * 60 * 1000
     try {
       if (!idToken) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       const segments = idToken.split('.')
       if (segments.length !== 3) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       const payloadSegment = segments[1]
       if (!/^[A-Za-z0-9_-]+$/.test(payloadSegment)) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       const payloadBuffer = Buffer.from(payloadSegment, 'base64url')
       if (payloadBuffer.toString('base64url') !== payloadSegment) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       const payload: unknown = JSON.parse(payloadBuffer.toString('utf8'))
       if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       const exp = 'exp' in payload ? payload.exp : undefined
       if (typeof exp !== 'number' || !Number.isFinite(exp) || exp <= 0) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       const expDeadline = exp * 1000
       // ID tokens are hour-lived; ten years rejects nonsensical dates without affecting real tokens.
       const latestReasonableExpiry = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000
       if (!Number.isFinite(expDeadline) || expDeadline > latestReasonableExpiry) {
-        return expiresInDeadline
+        return noInfoFallback
       }
 
       // Auth0's expires_in (measured at 24h) describes the access token, while
       // we send the ID token (measured at 10h), so its own exp must cap the deadline.
-      return Math.min(expDeadline, expiresInDeadline)
+      // When expires_in is unusable the exp claim stands alone rather than being
+      // discarded by Math.min(valid, NaN) === NaN.
+      return expiresInUsable ? Math.min(expDeadline, expiresInDeadline) : expDeadline
     } catch {
-      return expiresInDeadline
+      return noInfoFallback
     }
   }
 

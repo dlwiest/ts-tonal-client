@@ -90,7 +90,7 @@ describe('AuthManager', () => {
 
       await expect(authManager.authenticate()).resolves.toBe(idToken)
 
-      expect(exp).toBeLessThan(now)
+      expect(exp * 1000).toBeLessThan(now + 86400 * 1000)
       expect(getRecordedExpiry(authManager)).toBe(exp * 1000)
       await expect(authManager.getValidToken()).resolves.toBe(idToken)
       expect(mockFetch).toHaveBeenCalledTimes(1)
@@ -130,6 +130,63 @@ describe('AuthManager', () => {
       await expect(authManager.getValidToken()).resolves.toBe(refreshedIdToken)
       expect(getRecordedExpiry(authManager)).toBe(refreshedExp * 1000)
       expect(mockFetch).toHaveBeenCalledTimes(2)
+    })
+
+    // OAuthTokenResponse declares expires_in as required, but that interface already
+    // declared refresh_token required until Auth0 was observed omitting it. A missing
+    // expires_in makes the expires_in deadline NaN, and Math.min(valid, NaN) is NaN --
+    // which would discard a perfectly good exp claim and make isTokenValid() false
+    // forever, refreshing the grant on every single call.
+    it('should keep the id_token exp when expires_in is absent', async () => {
+      const exp = now / 1000 + 10 * 60 * 60
+      const idToken = createIdToken({ exp })
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access_token: 'mock-access-token',
+          id_token: idToken,
+          refresh_token: 'mock-refresh-token',
+          scope: 'offline_access',
+          token_type: 'Bearer'
+          // expires_in deliberately omitted
+        })
+      })
+
+      await expect(authManager.authenticate()).resolves.toBe(idToken)
+
+      const recorded = getRecordedExpiry(authManager)
+      expect(Number.isFinite(recorded)).toBe(true)
+      expect(recorded).toBe(exp * 1000)
+
+      // The decisive part: a second call must reuse the cached token, not re-authenticate.
+      await expect(authManager.getValidToken()).resolves.toBe(idToken)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should never record a non-finite expiry when neither source is usable', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access_token: 'mock-access-token',
+          id_token: 'opaque-token',
+          refresh_token: 'mock-refresh-token',
+          scope: 'offline_access',
+          token_type: 'Bearer'
+          // no expires_in, and the token carries no exp claim
+        })
+      })
+
+      await authManager.authenticate()
+
+      const recorded = getRecordedExpiry(authManager)
+      expect(Number.isFinite(recorded)).toBe(true)
+      expect(recorded).toBeGreaterThan(now)
+
+      // Must not spin the grant on every call.
+      await authManager.getValidToken()
+      await authManager.getValidToken()
+      expect(mockFetch).toHaveBeenCalledTimes(1)
     })
 
     it.each([
