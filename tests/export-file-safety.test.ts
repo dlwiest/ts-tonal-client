@@ -4,6 +4,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  rename,
   rm,
   stat,
   symlink,
@@ -11,6 +12,7 @@ import {
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { replacePrivateDirectory } from '../examples/private-export-files'
 import { writeCompactHealthExport } from '../examples/export-health-data'
 import {
   optionalMetric,
@@ -155,9 +157,37 @@ describe('private export files', () => {
     ).toBe('keep')
   })
 
+  it('does not delete a managed-looking directory replaced during preparation', async () => {
+    const directory = await temporaryDirectory()
+    const finalPath = join(directory, 'managed-export')
+    const displacedPath = join(directory, 'displaced-export')
+    await mkdir(finalPath)
+    await writeFile(join(finalPath, 'managed.json'), 'original')
+
+    await expect(
+      replacePrivateDirectory(
+        finalPath,
+        async temporaryPath => {
+          await writeFile(join(temporaryPath, 'managed.json'), 'prepared')
+          await rename(finalPath, displacedPath)
+          await mkdir(finalPath)
+          await writeFile(join(finalPath, 'managed.json'), 'replacement')
+        },
+        { isManagedEntry: name => name === 'managed.json' }
+      )
+    ).rejects.toThrow('directory changed during export')
+
+    expect(await readFile(join(finalPath, 'managed.json'), 'utf8')).toBe(
+      'replacement'
+    )
+    expect(await readFile(join(displacedPath, 'managed.json'), 'utf8')).toBe(
+      'original'
+    )
+  })
 })
 
 describe('optional complete-export metrics', () => {
+
   it('records only fixed categories when a provider error contains private text', async () => {
     const errors: RetrievalError[] = []
 

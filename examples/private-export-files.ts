@@ -141,6 +141,13 @@ export async function replacePrivateDirectory(
     if (existing === undefined && current !== undefined) {
       throw new Error(`Refusing to replace destination created during export: ${path}`)
     }
+    if (
+      existing !== undefined &&
+      current !== undefined &&
+      (current.dev !== existing.dev || current.ino !== existing.ino)
+    ) {
+      throw new Error(`Refusing to replace directory changed during export: ${path}`)
+    }
 
     if (current !== undefined) {
       backupPath = join(parent, `.${directoryName}.backup-${randomUUID()}`)
