@@ -5,6 +5,18 @@ import { TonalClientError } from '../src/types'
 const mockFetch = jest.fn()
 global.fetch = mockFetch
 
+const jwtHeader = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url')
+const createIdTokenFromPayload = (payload: string): string =>
+  `${jwtHeader}.${Buffer.from(payload).toString('base64url')}.signature`
+const createIdToken = (claims: unknown): string =>
+  createIdTokenFromPayload(JSON.stringify(claims))
+
+const getRecordedExpiry = (manager: AuthManager): number => {
+  // This is the observable state under test, but AuthManager intentionally keeps it private.
+  const managerState = manager as unknown as { tokenExpiresAt: number }
+  return managerState.tokenExpiresAt
+}
+
 describe('AuthManager', () => {
   let authManager: AuthManager
 
@@ -50,6 +62,166 @@ describe('AuthManager', () => {
           signal: expect.any(AbortSignal)
         })
       )
+    })
+  })
+
+  describe('token expiry', () => {
+    const now = Date.parse('2026-09-01T12:00:00.000Z')
+
+    beforeEach(() => {
+      jest.setSystemTime(now)
+    })
+
+    it('should use the id_token exp when it expires before expires_in', async () => {
+      const exp = now / 1000 + 10 * 60 * 60
+      const idToken = createIdToken({ exp })
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access_token: 'mock-access-token',
+          id_token: idToken,
+          refresh_token: 'mock-refresh-token',
+          scope: 'offline_access',
+          token_type: 'Bearer',
+          expires_in: 86400
+        })
+      })
+
+      await expect(authManager.authenticate()).resolves.toBe(idToken)
+
+      expect(exp).toBeLessThan(now)
+      expect(getRecordedExpiry(authManager)).toBe(exp * 1000)
+      await expect(authManager.getValidToken()).resolves.toBe(idToken)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should use the refreshed id_token exp when it expires before expires_in', async () => {
+      const initialIdToken = createIdToken({ exp: now / 1000 + 60 * 60 })
+      const refreshedExp = now / 1000 + 10 * 60 * 60
+      const refreshedIdToken = createIdToken({ exp: refreshedExp })
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            access_token: 'initial-access-token',
+            id_token: initialIdToken,
+            refresh_token: 'initial-refresh-token',
+            scope: 'offline_access',
+            token_type: 'Bearer',
+            expires_in: 86400
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            access_token: 'refreshed-access-token',
+            id_token: refreshedIdToken,
+            scope: 'offline_access',
+            token_type: 'Bearer',
+            expires_in: 86400
+          })
+        })
+
+      await authManager.authenticate()
+      authManager.invalidateToken()
+
+      await expect(authManager.getValidToken()).resolves.toBe(refreshedIdToken)
+      expect(getRecordedExpiry(authManager)).toBe(refreshedExp * 1000)
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+    })
+
+    it.each([
+      ['an empty token', ''],
+      ['an undefined token', undefined],
+      ['an opaque token', 'opaque-token'],
+      ['an invalid base64url payload', 'header.***.signature'],
+      ['a payload that is not JSON', createIdTokenFromPayload('{not-json')],
+      ['a null payload', createIdToken(null)],
+      ['an array payload', createIdToken([])],
+      ['a numeric payload', createIdToken(42)],
+      ['a payload without exp', createIdToken({ sub: 'user' })],
+      ['a string exp', createIdToken({ exp: '123' })],
+      ['a null exp', createIdToken({ exp: null })],
+      ['a NaN exp', createIdTokenFromPayload('{"exp":NaN}')],
+      ['an infinite exp', createIdTokenFromPayload('{"exp":1e400}')],
+      ['a zero exp', createIdToken({ exp: 0 })],
+      ['a negative exp', createIdToken({ exp: -1 })],
+      ['an absurdly distant exp', createIdToken({ exp: Number.MAX_SAFE_INTEGER })]
+    ])('should fall back to expires_in for %s', async (_description, idToken) => {
+      const expiresIn = 3600
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access_token: 'mock-access-token',
+          id_token: idToken,
+          refresh_token: 'mock-refresh-token',
+          scope: 'offline_access',
+          token_type: 'Bearer',
+          expires_in: expiresIn
+        })
+      })
+
+      await expect(authManager.authenticate()).resolves.toBe(idToken)
+      expect(getRecordedExpiry(authManager)).toBe(now + expiresIn * 1000)
+    })
+
+    it('should use expires_in when it expires before the id_token exp', async () => {
+      const expiresIn = 86400
+      const idToken = createIdToken({ exp: now / 1000 + 48 * 60 * 60 })
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access_token: 'mock-access-token',
+          id_token: idToken,
+          refresh_token: 'mock-refresh-token',
+          scope: 'offline_access',
+          token_type: 'Bearer',
+          expires_in: expiresIn
+        })
+      })
+
+      await authManager.authenticate()
+
+      expect(getRecordedExpiry(authManager)).toBe(now + expiresIn * 1000)
+    })
+
+    it('should refresh after a 401 caller invalidates the current token', async () => {
+      const initialIdToken = createIdToken({ exp: now / 1000 + 10 * 60 * 60 })
+      const refreshedIdToken = createIdToken({ exp: now / 1000 + 20 * 60 * 60 })
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            access_token: 'initial-access-token',
+            id_token: initialIdToken,
+            refresh_token: 'initial-refresh-token',
+            scope: 'offline_access',
+            token_type: 'Bearer',
+            expires_in: 86400
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            access_token: 'refreshed-access-token',
+            id_token: refreshedIdToken,
+            scope: 'offline_access',
+            token_type: 'Bearer',
+            expires_in: 86400
+          })
+        })
+
+      await authManager.authenticate()
+      authManager.invalidateToken()
+
+      await expect(authManager.getValidToken()).resolves.toBe(refreshedIdToken)
+      const refreshRequest = JSON.parse(mockFetch.mock.calls[1][1].body)
+      expect(refreshRequest.grant_type).toBe('refresh_token')
+      expect(refreshRequest.refresh_token).toBe('initial-refresh-token')
     })
   })
 

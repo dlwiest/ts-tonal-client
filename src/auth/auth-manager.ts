@@ -68,9 +68,56 @@ export class AuthManager {
     const tokenData: OAuthTokenResponse = await response.json()
     this.idToken = tokenData.id_token
     this.refreshToken = tokenData.refresh_token ?? ''
-    this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000)
+    const expiresInDeadline = Date.now() + tokenData.expires_in * 1000
+    this.tokenExpiresAt = this.getTokenExpiresAt(tokenData.id_token, expiresInDeadline)
 
     return this.idToken
+  }
+
+  private getTokenExpiresAt(idToken: string | undefined, expiresInDeadline: number): number {
+    try {
+      if (!idToken) {
+        return expiresInDeadline
+      }
+
+      const segments = idToken.split('.')
+      if (segments.length !== 3) {
+        return expiresInDeadline
+      }
+
+      const payloadSegment = segments[1]
+      if (!/^[A-Za-z0-9_-]+$/.test(payloadSegment)) {
+        return expiresInDeadline
+      }
+
+      const payloadBuffer = Buffer.from(payloadSegment, 'base64url')
+      if (payloadBuffer.toString('base64url') !== payloadSegment) {
+        return expiresInDeadline
+      }
+
+      const payload: unknown = JSON.parse(payloadBuffer.toString('utf8'))
+      if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+        return expiresInDeadline
+      }
+
+      const exp = 'exp' in payload ? payload.exp : undefined
+      if (typeof exp !== 'number' || !Number.isFinite(exp) || exp <= 0) {
+        return expiresInDeadline
+      }
+
+      const expDeadline = exp * 1000
+      // ID tokens are hour-lived; ten years rejects nonsensical dates without affecting real tokens.
+      const latestReasonableExpiry = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000
+      if (!Number.isFinite(expDeadline) || expDeadline > latestReasonableExpiry) {
+        return expiresInDeadline
+      }
+
+      // Auth0's expires_in (measured at 24h) describes the access token, while
+      // we send the ID token (measured at 10h), so its own exp must cap the deadline.
+      return Math.min(expDeadline, expiresInDeadline)
+    } catch {
+      return expiresInDeadline
+    }
   }
 
   invalidateToken(): void {
@@ -142,6 +189,7 @@ export class AuthManager {
     const tokenData: OAuthTokenResponse = await response.json()
     this.idToken = tokenData.id_token
     this.refreshToken = tokenData.refresh_token ?? this.refreshToken
-    this.tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000)
+    const expiresInDeadline = Date.now() + tokenData.expires_in * 1000
+    this.tokenExpiresAt = this.getTokenExpiresAt(tokenData.id_token, expiresInDeadline)
   }
 }
