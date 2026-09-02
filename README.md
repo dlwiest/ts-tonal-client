@@ -3,20 +3,53 @@
 [![npm version](https://badge.fury.io/js/@dlwiest%2Fts-tonal-client.svg)](https://badge.fury.io/js/@dlwiest%2Fts-tonal-client)
 [![npm downloads](https://img.shields.io/npm/dm/@dlwiest/ts-tonal-client.svg)](https://www.npmjs.com/package/@dlwiest/ts-tonal-client)
 
-A comprehensive TypeScript client for accessing Tonal's API. This library provides a robust interface to retrieve workout data, user information, movements, and more from your Tonal account.
+A TypeScript client for working with data from a Tonal account. It wraps
+authentication, workout and movement APIs, completed performance data, recovery
+metrics, programs, goals, and personal health-data exports in a typed interface.
 
-## Features
+> [!IMPORTANT]
+> This is an unofficial community project. It is not affiliated with or
+> supported by Tonal, and the private APIs it uses may change without notice.
 
-- 🏋️ **Complete Workout Management** - Get, create, estimate, and share workouts including daily lifts
-- 👤 **User Management** - Access user info, goals, and preferences  
-- 💪 **Movement Database** - Browse all available Tonal movements
-- 🎯 **Muscle Readiness Tracking** - Monitor recovery status for all muscle groups
-- 📋 **Program Details** - Get comprehensive information about training programs
-- 🎯 **Target Score Tracking** - Get weekly fitness targets and progress ranges for all metrics
-- 📈 **Metric Score Analysis** - Track actual performance vs targets with comprehensive analytics
-- 🛡️ **Enterprise-Grade Reliability** - Built-in error handling, retries, and timeouts
-- 📝 **Full TypeScript Support** - Comprehensive types for all API responses
-- 🔄 **Smart Token Management** - Automatic authentication and token refresh
+## Product Overview
+
+The client is meant for personal tools, data exports, and applications that need
+more Tonal detail than a general fitness integration may provide. In particular,
+it can retrieve performed set data—movements, reps, weight, volume, training
+modes, timing, and estimated one-rep max—and combine it with workout summaries,
+muscle readiness, and lifetime totals.
+
+One intended workflow is to create a privacy-conscious JSON snapshot and upload
+it to an AI assistant such as ChatGPT for personal health analysis. This is a
+file-based bridge, not a live or automatic ChatGPT connection: generate a new
+export whenever the assistant needs current Tonal data.
+
+## Product Features
+
+| Area | Current capabilities |
+| --- | --- |
+| Authentication | Sign in with Tonal account credentials and automatically manage access-token refresh |
+| Workout library | List, retrieve, create, update, delete, share, and estimate workouts; retrieve Daily Lifts |
+| Completed performance | Retrieve activity summaries, paginated workout history, and individual workout details including performed sets, reps, weights, volume, timing, training modes, and estimated one-rep max |
+| Movements and programs | Browse Tonal movements and muscle groups and retrieve detailed training programs |
+| Training and recovery | Retrieve daily metrics, streaks, muscle readiness, weekly targets, and actual metric scores |
+| History and achievements | Retrieve lifetime statistics, achievement progress, earned achievements, and home-calendar recommendations |
+| Health data export | Produce date-filtered JSON with aggregate totals, optional recovery and lifetime data, and optional set-level workout details |
+| Developer experience | TypeScript response types, request validation, retries, timeouts, movement caching, and runnable examples |
+
+## Current Limitations
+
+- Tonal does not publish or guarantee the private APIs used by this project.
+- Authentication currently requires Tonal account credentials; never commit a
+  populated `.env` file or include credentials in an export.
+- Health exports are point-in-time files. They do not continuously synchronize
+  Tonal with ChatGPT or another health service.
+- Detailed exports fetch paginated workout activity data, so large account
+  histories may require additional requests and take longer.
+- Tonal reports average resistance per cable. The export preserves that value
+  and derives effective average resistance from Tonal's total on-machine volume
+  divided by completed reps, correctly accounting for dual-cable movements such
+  as straight-bar lifts.
 
 ## Installation
 
@@ -165,7 +198,110 @@ npm run example:target-scores
 
 # Get actual performance scores vs targets with comprehensive analytics
 npm run example:metric-scores
+
+# Export workout summaries for personal health analysis
+npm run example:health-export
+
+# Export complete Tonal history and all available health metrics
+npm run example:complete-health-export
 ```
+
+## Health Data Export
+
+Create a JSON-ready export containing workout summaries, aggregate totals, current
+muscle readiness, and lifetime statistics:
+
+```typescript
+import { writeFile } from 'node:fs/promises'
+
+const exportData = await client.getHealthExport({
+  startDate: '2026-01-01',
+  limit: 100,
+  includeSetDetails: true,
+})
+
+await writeFile(
+  'tonal-health-export.json',
+  JSON.stringify(exportData, null, 2)
+)
+```
+
+Run `npm run example:health-export` to write a compact export of the 50 most
+recent Tonal workouts to `tonal-health-export.json`. The example atomically
+replaces the file with owner-only permissions and refuses symbolic-link
+destinations.
+
+The export intentionally excludes profile details, account identifiers, device
+identifiers, application versions, and authentication data. It still contains
+private health and workout information, so store and share it carefully.
+
+Available options:
+
+- `startDate` and `endDate`: include activities within an ISO-8601 range;
+  date-only values use each workout's local calendar day
+- `limit`: include at most this many activities, newest first
+- `includeMuscleReadiness`: include current readiness data (default: `true`)
+- `includeLifetimeStatistics`: include lifetime aggregate data (default: `true`)
+- `includeExternalActivities`: include workouts imported into Tonal from another
+  service (default: `false`, preventing duplication with Apple Health data)
+- `includeSetDetails`: fetch performed sets, reps, weights, movement names, and
+  one-rep-max estimates from paginated workout activity data (default: `false`)
+
+Set details keep Tonal's reported per-cable values in
+`averageResistancePerCablePounds` and
+`estimatedOneRepMaxPerCablePounds`. Arithmetic derived from total volume and
+completed reps is separated under `derivedEstimates`, with
+`averageResistancePounds` and `oneRepMaxPounds` explicitly documented as
+estimates rather than measured values. `totalVolumePounds` uses Tonal's
+`totalOnMachineVolume`, which reconciles with the completed workout's total
+volume.
+
+Detailed completed workouts are also available directly:
+
+```typescript
+// Get a page of completed activities with performed set data
+const activities = await client.getWorkoutActivities(0, 100)
+
+// Get every activity, with duplicate-page and page-cap safety checks
+const completeHistory = await client.getAllWorkoutActivities()
+
+// Get one completed activity by its activity ID
+const activity = await client.getWorkoutActivityById('activity-uuid')
+console.log(activity.workoutSetActivity)
+
+// Get the summary returned for one activity
+const summary = await client.getFormattedWorkoutSummary('activity-uuid')
+
+// Get summaries in bounded request batches
+const summaries = await client.getFormattedWorkoutSummaries(
+  completeHistory.map(item => item.id),
+  5
+)
+```
+
+### Complete History Export
+
+Run `npm run example:complete-health-export` to retrieve every paginated Tonal
+workout from the beginning of the account history. The resulting
+`tonal-complete-health-export.json` includes raw set-performance metrics,
+formatted workout and movement summaries, full daily metrics for the covered
+period, strength-score history, weekly targets and scores, current readiness,
+streaks, lifetime statistics, achievements, and reference definitions.
+
+The complete export is structured as JSON for analysis tools such as ChatGPT.
+It includes a data dictionary explaining units and Tonal's per-cable resistance
+convention. Account, device, application, subscription, and authentication
+identifiers and user weight are removed recursively. The JSON is compacted to
+reduce upload size and text-token usage without dropping allowed data. The file
+still contains highly private health information and is atomically replaced
+with owner-only permissions.
+
+The script also atomically recreates a private `tonal-chatgpt-export` directory
+containing `overview-and-metrics.json` and one `workouts-YYYY.json` file for
+each year in the history, so files from an older export cannot survive a rerun.
+Upload every file listed by `overview-and-metrics.json` together. The split
+bundle contains the same information but keeps each text file smaller and
+easier for ChatGPT to analyze completely.
 
 ## API Reference
 

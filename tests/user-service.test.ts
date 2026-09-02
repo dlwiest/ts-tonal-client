@@ -361,3 +361,60 @@ describe('TonalClient workout activity detail', () => {
     }
   })
 })
+
+describe('UserService workout activity history', () => {
+  let request: jest.Mock
+  let service: UserService
+
+  beforeEach(() => {
+    request = jest.fn()
+    service = new UserService({ request } as unknown as HttpClient)
+  })
+
+  it('sends the live-verified pagination headers for workout activities', async () => {
+    const response = [sparseCompletedActivity]
+    request.mockResolvedValue(response)
+
+    await expect(
+      service.getWorkoutActivities('user-1', 100, 50)
+    ).resolves.toBe(response)
+    expect(request).toHaveBeenCalledWith('/users/user-1/workout-activities', {
+      method: 'GET',
+      headers: {
+        'pg-offset': '100',
+        'pg-limit': '50',
+      },
+    })
+  })
+
+  it.each([
+    [-1, 50, 'Offset must be a non-negative integer'],
+    [1.5, 50, 'Offset must be a non-negative integer'],
+    [0, 0, 'Limit must be an integer between 1 and 100'],
+    [0, 101, 'Limit must be an integer between 1 and 100'],
+  ])('rejects invalid workout activity pagination', async (offset, limit, message) => {
+    await expect(
+      service.getWorkoutActivities('user-1', offset, limit)
+    ).rejects.toThrow(message)
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it('requests the encoded canonical workout summary activity id', async () => {
+    const response = { id: 'activity/id' }
+    request.mockResolvedValue(response)
+
+    await expect(
+      service.getFormattedWorkoutSummary('user-1', ' activity/id ')
+    ).resolves.toBe(response)
+    expect(request).toHaveBeenCalledWith(
+      '/users/user-1/workout-summaries/activity%2Fid'
+    )
+  })
+
+  it('rejects an empty workout summary activity id before requesting', async () => {
+    await expect(
+      service.getFormattedWorkoutSummary('user-1', '  ')
+    ).rejects.toThrow('Workout activity ID is required')
+    expect(request).not.toHaveBeenCalled()
+  })
+})

@@ -74,26 +74,113 @@ export interface TonalWorkout {
   createdSource?: unknown | null // TODO: investigate how workouts are created/imported
 }
 
+/**
+ * A performed set returned as part of a completed workout activity.
+ *
+ * The history and single-activity endpoints expose different subsets. Fields
+ * beyond movementId are therefore optional, and values that Tonal may return
+ * as null remain nullable.
+ */
 export interface TonalWorkoutSetActivity {
+  id?: string
+  userId?: string
+  workoutId?: string
+  workoutActivityID?: string
   movementId: string
   prescribedReps?: number | null
+  prescribedDuration?: number
   repetition?: number | null
   repetitionTotal?: number | null
-  weightPercentage?: number | null
-  baseWeight?: number | null
-  eccentricWeight?: number | null
-  chainsWeight?: number | null
   blockNumber?: number | null
   blockStart?: boolean | null
-  sideNumber?: number | null
-  setId?: string | null
+  burnout?: boolean
+  calibration?: boolean
+  chains?: boolean
+  dropSet?: boolean
+  eccentric?: boolean
+  finalSet?: boolean
+  flex?: boolean
+  practice?: boolean
+  progressive?: boolean
+  skipDemo?: boolean
+  skipSetup?: boolean
   spotter?: boolean | null
+  warmUp?: boolean
+  beginTime?: string
+  endTime?: string
+  beginTimeMCB?: number
+  endTimeMCB?: number
+  duration?: number
+  durationBasedRepGoal?: number
+  sideNumber?: number | null
+  movementSide?: string
+  setGroup?: number
+  setId?: string | null
+  round?: number
+  sortOrder?: number
+  weightPercentage?: number | null
+  avgWeight?: number
+  baseWeight?: number | null
+  minWeight?: number
+  maxWeight?: number
+  suggestedWeight?: number
+  suggestedWeightChange?: number
+  eccentricWeight?: number | null
+  eccentricWeightFrac?: number
+  chainsWeight?: number | null
+  chainsWeightFrac?: number
+  romWeight?: number
+  romWeightFrac?: number
+  romWeightMode?: number
+  offMachineModifiedWeight?: number
+  maxSpottedWeight?: number
+  weightControlMode?: number | null
+  volume?: number
+  totalVolume?: number
+  totalOnMachineVolume?: number
+  userWeightPounds?: number
+  repCount?: number
+  cvRepCount?: number
+  repsInReserve?: number
+  reps?: unknown[] | null
+  dualMotorReps?: unknown[] | null
+  oneRepMax?: number
+  avgRom?: number
+  rom?: number
+  romLengthIn?: number
+  meanMaxPos?: number
+  avgVelocity?: number
+  isoModeSpeed?: number
+  concentricWork?: number
+  totalConcentricWork?: number
+  totalConDuration?: number
+  maxConPower?: number
+  velAtMaxConPower?: number
+  weightAtMaxConPower?: number
+  inconsistencyScore?: number
+  strugglingScore?: number
+  durationInconsistencyScore?: number
+  durationStrugglingScore?: number
+  maxVelInconsistencyScore?: number
+  maxVelStrugglingScore?: number
+  romInconsistencyScore?: number
+  romStrugglingScore?: number
+  inchesUpdated?: boolean
+  powerUpdated?: boolean
+  prs?: unknown[]
+  spotterMode?: string
+  triggeredFeedback?: unknown | null
 }
 
+/**
+ * Detailed completed workout data returned by
+ * GET /users/{userId}/workout-activities/{activityId}.
+ */
 export interface TonalWorkoutActivity {
   id: string
   userId: string
   workoutId: string
+  subscriptionId?: string
   workoutType?: string | null
   beginTime: string
   endTime?: string | null
@@ -107,11 +194,43 @@ export interface TonalWorkoutActivity {
   totalConcentricWork?: number | null
   percentCompleted?: number | null
   completed?: boolean | null
+  recoveryWeight?: boolean
+  hasAppleWatch?: boolean
+  isFirstWorkoutOfDay?: boolean
+  isSmartViewActivated?: boolean
   workoutSetActivity: TonalWorkoutSetActivity[]
   contentCard?: unknown
+  deletedAt?: string | null
+  partnerActivityId?: string | null
+  programEnrollmentId?: string
+  programId?: string
   deviceId?: string | null
   timezone?: string | null
   appVersion?: string | null
+  mcbServiceVersion?: string
+}
+
+/**
+ * Workout summary returned by
+ * GET /users/{userId}/workout-summaries/{activityId}.
+ */
+export interface TonalFormattedWorkoutSummary {
+  id: string
+  deletedAt: string | null
+  userId: string
+  name: string
+  workoutId: string
+  isInProgram: boolean
+  isGuidedWorkout: boolean
+  isBaselineWorkout: boolean
+  timestamp: string
+  UTCTimestamp: string
+  localTimestamp: string
+  endTime: string
+  timeZone: string
+  assetID?: string | null
+  targetArea: string
+  duration: number
 }
 
 export interface TonalSharedWorkout {

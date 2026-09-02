@@ -2,5 +2,12 @@
 /node_modules
 /dist
 movements.json
-.cache
+tonal-health-export.json
+tonal-complete-health-export.json
+tonal-chatgpt-export/
+/.tonal-health-export.json.tmp-*
+/.tonal-complete-health-export.json.tmp-*
+/.tonal-chatgpt-export.tmp-*/
+/.tonal-chatgpt-export.backup-*/
+.cache/
 rollup.config-*.cjs

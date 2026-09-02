@@ -29,12 +29,18 @@ import {
   TonalProgram,
   TonalTargetScoresResponse,
   TonalMetricScoresResponse,
+  TonalHealthExport,
+  TonalHealthExportOptions,
   TonalStrengthScore,
   TonalStrengthScoreHistoryEntry,
   TonalStrengthScoreHistoryLookback,
   TonalWorkoutActivity,
+  TonalFormattedWorkoutSummary,
   TonalClientError,
 } from './types'
+import { buildHealthExport } from './utils/health-export'
+
+const MAX_WORKOUT_ACTIVITY_PAGES = 1000
 
 export class TonalClient {
   private authManager: AuthManager
@@ -182,6 +188,62 @@ export class TonalClient {
     return this.userService.getActivitySummaries(userInfo.id)
   }
 
+  /**
+   * Get a page of completed workout activities including performed set data.
+   */
+  async getWorkoutActivities(
+    offset: number = 0,
+    limit: number = 100
+  ): Promise<TonalWorkoutActivity[]> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getWorkoutActivities(userInfo.id, offset, limit)
+  }
+
+  /** Get every completed Tonal workout activity using paginated requests. */
+  async getAllWorkoutActivities(pageSize: number = 100): Promise<TonalWorkoutActivity[]> {
+    if (!Number.isInteger(pageSize) || pageSize <= 0 || pageSize > 100) {
+      throw new TonalClientError('Page size must be an integer between 1 and 100')
+    }
+
+    const activities: TonalWorkoutActivity[] = []
+    await this.paginateWorkoutActivities(pageSize, page => {
+      activities.push(...page)
+      return false
+    })
+    return activities
+  }
+
+  async getFormattedWorkoutSummary(
+    activityId: string
+  ): Promise<TonalFormattedWorkoutSummary> {
+    const userInfo = await this.getUserInfo()
+    return this.userService.getFormattedWorkoutSummary(userInfo.id, activityId)
+  }
+
+  async getFormattedWorkoutSummaries(
+    activityIds: string[],
+    batchSize: number = 5
+  ): Promise<TonalFormattedWorkoutSummary[]> {
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+      throw new Error('Batch size must be a positive integer')
+    }
+
+    const userInfo = await this.getUserInfo()
+    const summaries: TonalFormattedWorkoutSummary[] = []
+
+    for (let index = 0; index < activityIds.length; index += batchSize) {
+      summaries.push(
+        ...(await Promise.all(
+          activityIds.slice(index, index + batchSize).map(activityId =>
+            this.userService.getFormattedWorkoutSummary(userInfo.id, activityId)
+          )
+        ))
+      )
+    }
+
+    return summaries
+  }
+
   async getUserStatistics(): Promise<TonalUserStatistics> {
     const userInfo = await this.getUserInfo()
     return this.userService.getUserStatistics(userInfo.id)
@@ -219,6 +281,126 @@ export class TonalClient {
   async getMetricScores(startWeek?: number): Promise<TonalMetricScoresResponse> {
     const userInfo = await this.getUserInfo()
     return this.userService.getMetricScores(userInfo.id, startWeek)
+  }
+
+  /**
+   * Create a compact export intended for health analysis and data portability.
+   *
+   * The export excludes profile, device, and authentication details. Activities
+   * can be filtered by date and limited, and optional readiness and lifetime
+   * statistics can be omitted when a smaller data set is preferred.
+   */
+  async getHealthExport(options: TonalHealthExportOptions = {}): Promise<TonalHealthExport> {
+    const includeMuscleReadiness = options.includeMuscleReadiness ?? true
+    const includeLifetimeStatistics = options.includeLifetimeStatistics ?? true
+
+    const [activities, muscleReadiness, lifetimeStatistics] = await Promise.all([
+      this.getActivitySummaries(),
+      includeMuscleReadiness ? this.getMuscleReadiness() : Promise.resolve(undefined),
+      includeLifetimeStatistics ? this.getUserStatistics() : Promise.resolve(undefined),
+    ])
+
+    const exportedAt = new Date()
+    const initialExport = buildHealthExport(
+      {
+        activities,
+        muscleReadiness,
+        lifetimeStatistics,
+      },
+      options,
+      exportedAt
+    )
+
+    if (!options.includeSetDetails || initialExport.activities.length === 0) {
+      return initialExport
+    }
+
+    const tonalActivityIds = initialExport.activities
+      .filter(activity => activity.source === 'tonal')
+      .map(activity => activity.activityId)
+    if (tonalActivityIds.length === 0) {
+      return initialExport
+    }
+
+    const [activityDetails, movements] = await Promise.all([
+      this.getWorkoutActivityDetails(tonalActivityIds),
+      this.getMovements(),
+    ])
+
+    return buildHealthExport(
+      {
+        activities,
+        muscleReadiness,
+        lifetimeStatistics,
+        activityDetails,
+        movements,
+      },
+      options,
+      exportedAt
+    )
+  }
+
+  private async paginateWorkoutActivities(
+    pageSize: number,
+    visitActivities: (activities: TonalWorkoutActivity[]) => boolean
+  ): Promise<void> {
+    const userInfo = await this.getUserInfo()
+    const seenIds = new Set<string>()
+
+    for (let pageNumber = 0, offset = 0; ; pageNumber += 1) {
+      const page = await this.userService.getWorkoutActivities(
+        userInfo.id,
+        offset,
+        pageSize
+      )
+      const newActivities = page.filter(activity => {
+        if (seenIds.has(activity.id)) {
+          return false
+        }
+        seenIds.add(activity.id)
+        return true
+      })
+
+      if (visitActivities(newActivities) || page.length < pageSize) {
+        return
+      }
+      if (newActivities.length === 0) {
+        throw new TonalClientError(
+          `Workout activity pagination did not advance at offset ${offset}`
+        )
+      }
+      if (pageNumber + 1 >= MAX_WORKOUT_ACTIVITY_PAGES) {
+        throw new TonalClientError(
+          `Workout activity pagination exceeded the ${MAX_WORKOUT_ACTIVITY_PAGES}-page safety limit`
+        )
+      }
+
+      const nextOffset = offset + pageSize
+      if (!Number.isSafeInteger(nextOffset) || nextOffset <= offset) {
+        throw new TonalClientError(
+          `Workout activity pagination could not advance beyond offset ${offset}`
+        )
+      }
+      offset = nextOffset
+    }
+  }
+
+  private async getWorkoutActivityDetails(
+    activityIds: string[]
+  ): Promise<TonalWorkoutActivity[]> {
+    const requestedIds = new Set(activityIds)
+    const details: TonalWorkoutActivity[] = []
+
+    await this.paginateWorkoutActivities(100, activities => {
+      for (const activity of activities) {
+        if (requestedIds.delete(activity.id)) {
+          details.push(activity)
+        }
+      }
+      return requestedIds.size === 0
+    })
+
+    return details
   }
 
   // Workout operations
