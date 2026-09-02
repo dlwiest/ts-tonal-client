@@ -54,7 +54,7 @@ console.log(`You have ${workouts.length} workouts`)
 
 ### Client setup
 
-`TonalClient.create()` accepts credentials and an optional movement cache directory:
+`TonalClient.create()` accepts credentials and an optional cache directory:
 
 ```typescript
 TonalClient.create(credentials: {
@@ -64,9 +64,9 @@ TonalClient.create(credentials: {
 }): Promise<TonalClient>
 ```
 
-Without `cacheDir`, movement data is cached in `$XDG_CACHE_HOME/ts-tonal-client` when `XDG_CACHE_HOME` is set. Otherwise, the cache lives at `~/.cache/ts-tonal-client`. The directory is created on the first successful cache write, not when the client is created.
+Without `cacheDir`, cached movements and completed workout activities are stored in `$XDG_CACHE_HOME/ts-tonal-client` when `XDG_CACHE_HOME` is set. Otherwise, the cache lives at `~/.cache/ts-tonal-client`. The directory is created on the first successful cache write, not when the client is created.
 
-Pass `cacheDir` to store the movement cache somewhere else:
+Pass `cacheDir` to store both caches somewhere else:
 
 ```typescript
 const client = await TonalClient.create({
@@ -78,7 +78,9 @@ const client = await TonalClient.create({
 
 ### Cache invalidation
 
-`TonalClient.invalidateUserInfo(): void` clears the cached user profile. Call `client.invalidateUserInfo()` before the next `getUserInfo()` request to fetch fresh data.
+`await client.invalidateMovementsCache()` clears the movements cache only. It does not clear cached workout activities.
+
+`client.invalidateUserInfo()` clears the in-memory user profile. Call it before the next `getUserInfo()` request to fetch fresh data.
 
 ## Examples
 
@@ -222,6 +224,86 @@ const updatedWorkout = await client.updateWorkout({
 await client.deleteWorkout('workout-uuid')
 ```
 
+### Performed workout activities
+
+A workout activity is one performed workout session, not a workout template. Get an activity ID from `getActivitySummaries()`, then fetch its detail from `/users/{userId}/workout-activities/{activityId}`:
+
+```typescript
+const summaries = await client.getActivitySummaries()
+const recent = [...summaries]
+  .filter(summary => summary.completed)
+  .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0]
+
+if (recent) {
+  const activity = await client.getWorkoutActivityById(recent.id)
+  console.log(`${activity.totalSets} sets, ${activity.totalReps} reps`)
+  console.log(`Completed: ${activity.completed === true}`)
+}
+```
+
+The method signature is:
+
+```typescript
+async getWorkoutActivityById(
+  activityId: string,
+  useCache: boolean = true
+): Promise<TonalWorkoutActivity>
+```
+
+Completed activities are immutable, so results with `completed === true` are cached permanently with no TTL. In-progress activities are never cached. Cache keys include both the user and activity IDs, which prevents collisions between accounts. Cache reads and writes are best-effort: a cache failure never fails the API request or hides a successful response. Pass `false` for `useCache` to force a fresh request.
+
+Activity entries use the same `cacheDir` and default cache location described under [Client setup](#client-setup). Permanent entries never expire and nothing evicts them automatically, so the cache grows by one small file for each completed activity viewed. `invalidateMovementsCache()` does not clear these entries.
+
+#### Activity response types
+
+`TonalWorkoutActivity` contains the performed session's IDs, timestamps, duration and aggregate totals, completion state, device metadata, and its set activity records:
+
+```typescript
+interface TonalWorkoutActivity {
+  id: string
+  userId: string
+  workoutId: string
+  workoutType?: string | null
+  beginTime: string
+  endTime?: string | null
+  totalDuration: number
+  activeDuration?: number | null
+  restDuration?: number | null
+  totalMovements?: number | null
+  totalSets: number
+  totalReps: number
+  totalVolume: number
+  totalConcentricWork?: number | null
+  percentCompleted?: number | null
+  completed?: boolean | null
+  workoutSetActivity: TonalWorkoutSetActivity[]
+  contentCard?: unknown
+  deviceId?: string | null
+  timezone?: string | null
+  appVersion?: string | null
+}
+```
+
+Each `TonalWorkoutSetActivity` identifies a movement and includes the performed or prescribed values available for that set:
+
+```typescript
+interface TonalWorkoutSetActivity {
+  movementId: string
+  prescribedReps?: number | null
+  repetition?: number | null
+  repetitionTotal?: number | null
+  weightPercentage?: number | null
+  baseWeight?: number | null
+  eccentricWeight?: number | null
+  chainsWeight?: number | null
+  blockNumber?: number | null
+  blockStart?: boolean | null
+  sideNumber?: number | null
+  setId?: string | null
+  spotter?: boolean | null
+}
+```
+
 ### User Information
 
 ```typescript
@@ -277,14 +359,6 @@ const streak = await client.getCurrentStreak()
 console.log(`Current streak: ${streak.currentStreak} workouts`)
 console.log(`Personal best: ${streak.maxStreak} workouts`)
 console.log(`Progress to personal best: ${Math.round((streak.currentStreak / streak.maxStreak) * 100)}%`)
-
-// Get comprehensive workout activity history
-const activities = await client.getActivitySummaries()
-console.log(`Total workouts completed: ${activities.length}`)
-const totalVolume = activities.reduce((sum, activity) => sum + activity.totalVolume, 0)
-console.log(`Total volume lifted: ${totalVolume.toLocaleString()} lbs`)
-const guidedWorkouts = activities.filter(a => a.isGuidedWorkout).length
-console.log(`Guided vs Free Lift: ${guidedWorkouts}/${activities.length - guidedWorkouts}`)
 
 // Get lifetime statistics and achievements
 const stats = await client.getUserStatistics()
