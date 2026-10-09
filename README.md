@@ -699,8 +699,9 @@ the account ages rather than relying on a large magic number. If `createdAt` is 
 unparseable, or in the future it throws `TonalClientError` rather than guessing — pass an
 explicit `days` in that case.
 
-Each history entry carries `workoutActivityId`, which makes this the only complete way to
-enumerate an account's activities: the list endpoints are capped at 50 records each.
+Each history entry carries `workoutActivityId`. To enumerate every activity directly, use
+`getAllWorkoutActivities()`: the list endpoints return 50 records unless paged with `pg-*`
+headers.
 
 ### Movements
 
