@@ -3,6 +3,7 @@ import { HttpClient } from './http/http-client'
 import { WorkoutService } from './services/workout-service'
 import { MovementService } from './services/movement-service'
 import { UserService } from './services/user-service'
+import { LibraryService } from './services/library-service'
 
 import {
   TonalMovement,
@@ -37,6 +38,8 @@ import {
   TonalWorkoutActivity,
   TonalFormattedWorkoutSummary,
   TonalClientError,
+  TonalWorkoutLibraryEntry,
+  TonalProgramLibraryEntry,
 } from './types'
 import { buildHealthExport } from './utils/health-export'
 
@@ -47,6 +50,7 @@ export class TonalClient {
   private httpClient: HttpClient
   private workoutService: WorkoutService
   private movementService: MovementService
+  private libraryService: LibraryService
   private userService: UserService
   private userInfo?: TonalUserInfo
   private userInfoPromise?: Promise<TonalUserInfo>
@@ -57,6 +61,7 @@ export class TonalClient {
     this.workoutService = new WorkoutService(this.httpClient)
     this.movementService = new MovementService(this.httpClient, cacheDir)
     this.userService = new UserService(this.httpClient, cacheDir)
+    this.libraryService = new LibraryService(this.httpClient, cacheDir)
   }
 
   static async create(credentials: { username: string; password: string; cacheDir?: string }): Promise<TonalClient> {
@@ -72,6 +77,21 @@ export class TonalClient {
 
   async invalidateMovementsCache(): Promise<void> {
     return this.movementService.invalidateMovementsCache()
+  }
+
+  // Guided library operations
+  /** Tonal's published guided-workout index, cached on disk for 24 hours. Entries carry no sets; use getWorkoutById for those. */
+  async getWorkoutLibrary(useCache: boolean = true): Promise<TonalWorkoutLibraryEntry[]> {
+    return this.libraryService.getWorkoutLibrary(useCache)
+  }
+
+  /** Tonal's published program index, cached on disk for 24 hours. Entries carry no workouts; use getProgramById for those. */
+  async getProgramLibrary(useCache: boolean = true): Promise<TonalProgramLibraryEntry[]> {
+    return this.libraryService.getProgramLibrary(useCache)
+  }
+
+  async invalidateLibraryCache(): Promise<void> {
+    return this.libraryService.invalidateLibraryCache()
   }
 
   // User operations

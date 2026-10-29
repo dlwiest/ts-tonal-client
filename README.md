@@ -31,7 +31,7 @@ export whenever the assistant needs current Tonal data.
 | Authentication | Sign in with Tonal account credentials and automatically manage access-token refresh |
 | Workout library | List, retrieve, create, update, delete, share, and estimate workouts; retrieve Daily Lifts |
 | Completed performance | Retrieve activity summaries, paginated workout history, and individual workout details including performed sets, reps, weights, volume, timing, training modes, and estimated one-rep max |
-| Movements and programs | Browse Tonal movements and muscle groups and retrieve detailed training programs |
+| Movements and programs | Browse Tonal movements and muscle groups, list the full guided-workout and program library (cached), and retrieve detailed training programs |
 | Training and recovery | Retrieve daily metrics, streaks, muscle readiness, weekly targets, and actual metric scores |
 | History and achievements | Retrieve lifetime statistics, achievement progress, earned achievements, and home-calendar recommendations |
 | Health data export | Produce date-filtered JSON with aggregate totals, optional recovery and lifetime data, and optional set-level workout details |
@@ -97,9 +97,9 @@ TonalClient.create(credentials: {
 }): Promise<TonalClient>
 ```
 
-Without `cacheDir`, cached movements and completed workout activities are stored in `$XDG_CACHE_HOME/ts-tonal-client` when `XDG_CACHE_HOME` is set. Otherwise, the cache lives at `~/.cache/ts-tonal-client`. The directory is created on the first successful cache write, not when the client is created.
+Without `cacheDir`, cached movements, guided-library indexes, and completed workout activities are stored in `$XDG_CACHE_HOME/ts-tonal-client` when `XDG_CACHE_HOME` is set. Otherwise, the cache lives at `~/.cache/ts-tonal-client`. The directory is created on the first successful cache write, not when the client is created.
 
-Pass `cacheDir` to store both caches somewhere else:
+Pass `cacheDir` to store these caches somewhere else:
 
 ```typescript
 const client = await TonalClient.create({
@@ -112,6 +112,8 @@ const client = await TonalClient.create({
 ### Cache invalidation
 
 `await client.invalidateMovementsCache()` clears the movements cache only. It does not clear cached workout activities.
+
+`await client.invalidateLibraryCache()` clears both guided-library indexes (workouts and programs).
 
 `client.invalidateUserInfo()` clears the in-memory user profile. Call it before the next `getUserInfo()` request to fetch fresh data.
 
@@ -714,6 +716,26 @@ const chestMovements = movements.filter(m =>
   m.muscleGroups.includes('Chest')
 )
 ```
+
+### Guided library
+
+Tonal's published guided workouts and programs, as the full indexes the app browses. The workout index is several megabytes (over 3,000 entries), so both indexes are cached on disk for 24 hours, like movements. They contain no account-specific data, so one cache serves any account. Pass `false` to bypass and refresh the cache.
+
+```typescript
+const workouts = await client.getWorkoutLibrary()
+const quickUpper = workouts.filter(w =>
+  w.targetArea === 'UPPER BODY' && w.duration <= 30 * 60 && w.level === 'INTERMEDIATE'
+)
+
+const programs = await client.getProgramLibrary()
+const fourDay = programs.filter(p => p.workoutsPerWeek === 4 && p.weeks === 6)
+
+// Index entries are summaries. Fetch details by ID for sets or a program's workouts.
+const workout = await client.getWorkoutById(quickUpper[0].id)
+const program = await client.getProgramById(fourDay[0].id)
+```
+
+Index entries are typed as `TonalWorkoutLibraryEntry` and `TonalProgramLibraryEntry`, not `TonalWorkout` and `TonalProgram`. Workout entries have no `sets`, `programId` is always `null`, and `targetArea` is absent on some entries. Program entries have an empty `workouts` array and no `programWorkouts`. `duration` is in seconds.
 
 ## Available Scripts
 

@@ -1,6 +1,7 @@
 export * from './auth'
 export * from './common'
 export * from './health-export'
+export * from './library'
 export * from './movements'
 export * from './programs'
 export * from './users'
