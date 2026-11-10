@@ -31,6 +31,18 @@ describe('WorkoutService', () => {
     service = new WorkoutService({ request } as unknown as HttpClient)
   })
 
+  it('sends the live-verified pagination headers for user workouts', async () => {
+    await service.getUserWorkouts(100, 50)
+
+    expect(request).toHaveBeenCalledWith('/user-workouts', {
+      method: 'GET',
+      headers: {
+        'pg-offset': '100',
+        'pg-limit': '50',
+      },
+    })
+  })
+
   it('sends the raw sets array when estimating workout duration', async () => {
     await service.estimateWorkoutDuration([workoutSet])
 

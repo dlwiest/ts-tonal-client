@@ -148,7 +148,7 @@ export class UserService {
       throw new TonalClientError('Limit must be an integer between 1 and 100')
     }
 
-    // Verified live: this endpoint uses pg-* headers, unlike /user-workouts.
+    // Verified live: this endpoint uses pg-* headers and ignores x-paginate-*.
     return this.httpClient.request(`/users/${userId}/workout-activities`, {
       method: 'GET',
       headers: {

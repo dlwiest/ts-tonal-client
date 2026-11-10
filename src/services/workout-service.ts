@@ -17,8 +17,8 @@ export class WorkoutService {
     return this.httpClient.request('/user-workouts', {
       method: 'GET',
       headers: {
-        'x-paginate-offset': offset.toString(),
-        'x-paginate-limit': limit.toString(),
+        'pg-offset': offset.toString(),
+        'pg-limit': limit.toString(),
       },
     })
   }
